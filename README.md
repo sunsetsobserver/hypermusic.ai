@@ -10,6 +10,6 @@ The app is currently developed primarly for Web.
 
 To compile a web project, run in terminal:
 
-build web
+flutter build web
 
-Then host the content of the web directory at your chosen hosting platform (ex. netlify).
+Then host the content of the build/web directory at your chosen hosting platform (ex. netlify).
