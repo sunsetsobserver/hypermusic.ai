@@ -29,7 +29,10 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+/build/flutter_assets
+/build/macos
+/build/080c051ce0f3a2400becdf13ae185a7d
+/build/cache.dill.track.dill
 
 # Symbolication related
 app.*.symbols
