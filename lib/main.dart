@@ -18,6 +18,7 @@ void main() {
   void fetchFeatures() async {
     final features = await api.getAllFeatures();
     print("Features: $features");
+    print("Test Build Web");
   }
 
   fetchFeatures();
