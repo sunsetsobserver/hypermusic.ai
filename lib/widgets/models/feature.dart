@@ -66,38 +66,47 @@ class Feature {
   }
 
   void addComposite(Feature f) {
-    composites = List.from(composites)..add(f.clone()); // Clone when adding
+    // Don't clone, use the original reference
+    composites = List.from(composites)..add(f);
     if (!isScalar) {
-      // Initialize transformations, startingPoint and howMany for the new composite
-      transformationsMap[f.name] = [];
-      startingPoints[f.name] = null;
-      howManyValues[f.name] = null;
+      // Only initialize if not already present
+      if (!transformationsMap.containsKey(f.name)) {
+        transformationsMap[f.name] = [];
+        startingPoints[f.name] = null;
+        howManyValues[f.name] = null;
+      }
     }
   }
 
-  void addTransformation(String subFeatureName, Transformation t) {
-    if (!transformationsMap.containsKey(subFeatureName)) {
-      transformationsMap[subFeatureName] = [];
-    }
-    transformationsMap[subFeatureName]!.add(t.clone());
-  }
-
-  void removeTransformation(String subFeatureName, int index) {
-    if (transformationsMap.containsKey(subFeatureName) &&
-        transformationsMap[subFeatureName]!.length > index) {
-      transformationsMap[subFeatureName]!.removeAt(index);
-    }
-  }
-
+  // Get transformations for a specific sub-feature
   List<Transformation> getTransformationsForSubFeature(String subFeatureName) {
     return transformationsMap[subFeatureName] ?? [];
   }
 
-  void setStartingPoint(String featureName, int? value) {
-    startingPoints[featureName] = value;
+  // Add a transformation for a specific sub-feature
+  void addTransformationForSubFeature(
+      String subFeatureName, Transformation transformation) {
+    if (!transformationsMap.containsKey(subFeatureName)) {
+      transformationsMap[subFeatureName] = [];
+    }
+    transformationsMap[subFeatureName]!.add(transformation);
   }
 
-  void setHowMany(String featureName, int? value) {
-    howManyValues[featureName] = value;
+  // Remove a transformation for a specific sub-feature
+  void removeTransformationForSubFeature(String subFeatureName, int index) {
+    if (transformationsMap.containsKey(subFeatureName) &&
+        index < transformationsMap[subFeatureName]!.length) {
+      transformationsMap[subFeatureName]!.removeAt(index);
+    }
+  }
+
+  // Set starting point for a specific sub-feature
+  void setStartingPoint(String subFeatureName, int? value) {
+    startingPoints[subFeatureName] = value;
+  }
+
+  // Set howMany for a specific sub-feature
+  void setHowMany(String subFeatureName, int? value) {
+    howManyValues[subFeatureName] = value;
   }
 }

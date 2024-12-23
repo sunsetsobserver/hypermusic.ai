@@ -139,8 +139,10 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                               _viewedFeature = feature;
                             });
                             _workspaceController.clearWorkspace();
-                            _workspaceController
-                                .displayFeature(_viewedFeature!);
+                            _workspaceController.displayFeature(
+                              _viewedFeature!,
+                              parent: _rootContainerFeature,
+                            );
                           }
                         },
                       ),

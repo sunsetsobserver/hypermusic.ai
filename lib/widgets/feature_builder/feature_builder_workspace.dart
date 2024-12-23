@@ -89,8 +89,8 @@ class FeatureBuilderWorkspaceController {
     _state?._clearAll();
   }
 
-  void displayFeature(Feature feature) {
-    _state?._displayFeature(feature);
+  void displayFeature(Feature feature, {Feature? parent}) {
+    _state?._displayFeature(feature, parent: parent);
   }
 }
 
@@ -114,6 +114,7 @@ class FeatureBuilderWorkspace extends StatefulWidget {
 
 class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
   Feature? _currentFeatureView;
+  Feature? _parentFeature;
   final List<_FeatureNodeData> _featureNodes = [];
   int? hoveredNodeIndex;
   bool hoveredCanAccept = false;
@@ -133,12 +134,14 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
   void _clearAll() {
     setState(() {
       _currentFeatureView = null;
+      _parentFeature = null;
       _featureNodes.clear();
     });
   }
 
-  void _displayFeature(Feature feature) {
+  void _displayFeature(Feature feature, {Feature? parent}) {
     _currentFeatureView = feature;
+    _parentFeature = parent;
     _featureNodes.clear();
 
     if (feature.name == "New Feature" && feature.isScalar) {
@@ -237,16 +240,16 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
                     onTransformationRemove: (subFeatureName, transIndex) {
                       setState(() {
                         // Remove transformation from the feature
-                        _currentFeatureView!
-                            .removeTransformation(subFeatureName, transIndex);
+                        _currentFeatureView!.removeTransformationForSubFeature(
+                            subFeatureName, transIndex);
                         widget.onFeatureStructureUpdated(_getRootFeature());
                       });
                     },
                     onTransformationAdd: (subFeatureName, trans) {
                       setState(() {
                         // Add transformation to the feature
-                        _currentFeatureView!
-                            .addTransformation(subFeatureName, trans);
+                        _currentFeatureView!.addTransformationForSubFeature(
+                            subFeatureName, trans);
                         widget.onFeatureStructureUpdated(_getRootFeature());
                       });
                     },
@@ -331,6 +334,21 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
   }
 
   Feature _getRootFeature() {
+    if (_parentFeature != null) {
+      Feature current = _parentFeature!;
+      while (current.name != "New Feature") {
+        bool found = false;
+        for (final node in _featureNodes) {
+          if (node.feature.composites.contains(current)) {
+            current = node.feature;
+            found = true;
+            break;
+          }
+        }
+        if (!found) break;
+      }
+      return current;
+    }
     return _currentFeatureView!;
   }
 }

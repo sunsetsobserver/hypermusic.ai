@@ -123,6 +123,18 @@ class _FeatureNodeState extends State<FeatureNode> {
     }
   }
 
+  void _updateStartingPoint(String subFeatureName, String value) {
+    final intValue = int.tryParse(value);
+    widget.feature.setStartingPoint(subFeatureName, intValue);
+    widget.onStartingPointChanged(subFeatureName, intValue);
+  }
+
+  void _updateHowMany(String subFeatureName, String value) {
+    final intValue = int.tryParse(value);
+    widget.feature.setHowMany(subFeatureName, intValue);
+    widget.onHowManyChanged(subFeatureName, intValue);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isScalar = widget.feature.isScalar;
@@ -199,9 +211,8 @@ class _FeatureNodeState extends State<FeatureNode> {
                                       keyboardType: TextInputType.number,
                                       style: const TextStyle(fontSize: 12),
                                       onChanged: (value) {
-                                        final intValue = int.tryParse(value);
-                                        widget.onStartingPointChanged(
-                                            subFeature.name, intValue);
+                                        _updateStartingPoint(
+                                            subFeature.name, value);
                                       },
                                     ),
                                   ),
@@ -219,9 +230,7 @@ class _FeatureNodeState extends State<FeatureNode> {
                                       keyboardType: TextInputType.number,
                                       style: const TextStyle(fontSize: 12),
                                       onChanged: (value) {
-                                        final intValue = int.tryParse(value);
-                                        widget.onHowManyChanged(
-                                            subFeature.name, intValue);
+                                        _updateHowMany(subFeature.name, value);
                                       },
                                     ),
                                   ),
