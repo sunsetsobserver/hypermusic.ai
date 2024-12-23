@@ -2,30 +2,36 @@
 
 import '../interfaces/data_interface.dart';
 import 'mock_data_store.dart';
+import 'user_toolbox.dart';
 
 class MockAPI implements DataInterface {
+  MockAPI() {
+    // Initialize user's toolbox with mock data
+    UserToolbox.initializeFromMockData();
+  }
+
   @override
   Future<Map<String, dynamic>> getFeature(String name) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.features[name] ?? {};
+    return UserToolbox.features[name] ?? {};
   }
 
   @override
   Future<List<String>> getAllFeatures() async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.features.keys.toList();
+    return UserToolbox.features.keys.toList();
   }
 
   @override
   Future<Map<String, dynamic>> getTransformation(String name) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.transformations[name] ?? {};
+    return UserToolbox.transformations[name] ?? {};
   }
 
   @override
   Future<List<String>> getAllTransformations() async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.transformations.keys.toList();
+    return UserToolbox.transformations.keys.toList();
   }
 
   @override
@@ -52,47 +58,54 @@ class MockAPI implements DataInterface {
       }
     }
 
-    MockDataStore.features[name] = {
+    // Register in both MockDataStore and UserToolbox
+    final featureData = {
       "name": name,
       "composites": composites,
       "transformations": transformations,
       "startingPoints": finalStartingPoints,
       "howManyValues": finalHowManyValues,
     };
+
+    MockDataStore.features[name] = featureData;
+    UserToolbox.addFeature(name, featureData);
   }
 
   @override
   Future<void> registerTransformation(
       String name, int argsCount, String description) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    MockDataStore.transformations[name] = {
+    final transformationData = {
       "name": name,
       "argsCount": argsCount,
       "description": description,
     };
+
+    MockDataStore.transformations[name] = transformationData;
+    UserToolbox.addTransformation(name, transformationData);
   }
 
   @override
   Future<Map<String, dynamic>> getCondition(String name) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.conditions[name] ?? {};
+    return UserToolbox.conditions[name] ?? {};
   }
 
   @override
   Future<List<String>> getAllConditions() async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.conditions.keys.toList();
+    return UserToolbox.conditions.keys.toList();
   }
 
   @override
   Future<Map<String, dynamic>> getPerformativeTransaction(String name) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.performativeTransactions[name] ?? {};
+    return UserToolbox.performativeTransactions[name] ?? {};
   }
 
   @override
   Future<List<String>> getAllPerformativeTransactions() async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return MockDataStore.performativeTransactions.keys.toList();
+    return UserToolbox.performativeTransactions.keys.toList();
   }
 }

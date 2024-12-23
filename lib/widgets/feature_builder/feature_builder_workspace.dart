@@ -10,10 +10,12 @@ class _FeatureNodeData {
   Offset position;
   Feature feature;
   Condition? condition;
+  bool isFromPT;
 
   _FeatureNodeData({
     required this.position,
     required this.feature,
+    this.isFromPT = false,
   });
 }
 
@@ -176,6 +178,46 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
     return false;
   }
 
+  Future<void> _showCopyDialog(Feature feature) async {
+    final TextEditingController nameController = TextEditingController();
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text("Copy Feature"),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(labelText: 'New Feature Name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, nameController.text),
+              child: const Text("Copy"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newName != null && newName.isNotEmpty) {
+      final copiedFeature = feature.copyWithNewName(newName);
+      setState(() {
+        if (_currentFeatureView == null) {
+          _currentFeatureView = Feature(name: "New Feature");
+          widget.onFeatureStructureUpdated(_currentFeatureView!);
+        }
+        _currentFeatureView!.addComposite(copiedFeature);
+        widget.onFeatureStructureUpdated(_getRootFeature());
+        widget.onTopLevelStructureAdded(copiedFeature);
+        _displayFeature(_currentFeatureView!);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -202,10 +244,21 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
                   widget.onTopLevelStructureAdded(data);
                   _displayFeature(_currentFeatureView!);
                 } else if (data is PerformativeTransaction) {
-                  _currentFeatureView!.addComposite(data.feature);
+                  final feature = data.feature;
+                  _currentFeatureView!.addComposite(feature);
                   widget.onFeatureStructureUpdated(_getRootFeature());
-                  widget.onTopLevelStructureAdded(data.feature, pt: data);
+                  widget.onTopLevelStructureAdded(feature, pt: data);
                   _displayFeature(_currentFeatureView!);
+
+                  // Find and update the node after display
+                  setState(() {
+                    final nodeIndex = _featureNodes
+                        .indexWhere((node) => node.feature == feature);
+                    if (nodeIndex != -1) {
+                      _featureNodes[nodeIndex].condition = data.condition;
+                      _featureNodes[nodeIndex].isFromPT = true;
+                    }
+                  });
                 }
               });
             },
@@ -237,60 +290,70 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
                     canAcceptHover: canAcceptHover,
                     feature: nodeData.feature,
                     parentFeature: _currentFeatureView!,
-                    onTransformationRemove: (subFeatureName, transIndex) {
+                    isFromPT: nodeData.isFromPT,
+                    onStartingPointChanged: (subFeatureName, value) {
+                      if (nodeData.isFromPT) return;
                       setState(() {
-                        // Remove transformation from the feature
+                        _currentFeatureView!
+                            .setStartingPoint(subFeatureName, value);
+                        widget.onFeatureStructureUpdated(_getRootFeature());
+                      });
+                    },
+                    onHowManyChanged: (subFeatureName, value) {
+                      if (nodeData.isFromPT) return;
+                      setState(() {
+                        _currentFeatureView!.setHowMany(subFeatureName, value);
+                        widget.onFeatureStructureUpdated(_getRootFeature());
+                      });
+                    },
+                    onRemoveFeature: () {
+                      setState(() {
+                        final idx = _currentFeatureView!.composites
+                            .indexOf(nodeData.feature);
+                        if (idx >= 0) {
+                          _currentFeatureView!.composites.removeAt(idx);
+                          _featureNodes.removeAt(nodeIndex);
+                          widget.onFeatureStructureUpdated(_getRootFeature());
+                        }
+                      });
+                    },
+                    onRemoveCondition: () {
+                      if (nodeData.isFromPT) return;
+                      setState(() {
+                        nodeData.condition = null;
+                        widget.onFeatureStructureUpdated(_getRootFeature());
+                      });
+                    },
+                    onTransformationRemove: (subFeatureName, transIndex) {
+                      if (nodeData.isFromPT) return;
+                      setState(() {
                         _currentFeatureView!.removeTransformationForSubFeature(
                             subFeatureName, transIndex);
                         widget.onFeatureStructureUpdated(_getRootFeature());
                       });
                     },
                     onTransformationAdd: (subFeatureName, trans) {
+                      if (nodeData.isFromPT) return;
                       setState(() {
-                        // Add transformation to the feature
                         _currentFeatureView!.addTransformationForSubFeature(
                             subFeatureName, trans);
                         widget.onFeatureStructureUpdated(_getRootFeature());
                       });
                     },
-                    onStartingPointChanged: (featureName, intValue) {
+                    onCopyFeature: (feature) {
                       setState(() {
-                        _currentFeatureView!
-                            .setStartingPoint(featureName, intValue);
+                        final copiedFeature = feature.clone();
+                        _currentFeatureView!.composites.add(copiedFeature);
                         widget.onFeatureStructureUpdated(_getRootFeature());
+                        widget.onTopLevelStructureAdded(copiedFeature);
+                        _displayFeature(_currentFeatureView!);
                       });
                     },
-                    onHowManyChanged: (featureName, intValue) {
+                    onConditionAdd: (condition) {
+                      if (nodeData.isFromPT) return;
                       setState(() {
-                        _currentFeatureView!.setHowMany(featureName, intValue);
+                        nodeData.condition = condition;
                         widget.onFeatureStructureUpdated(_getRootFeature());
-                      });
-                    },
-                    onRemoveFeature: () {
-                      if (_currentFeatureView != null) {
-                        final idx = _currentFeatureView!.composites
-                            .indexOf(nodeData.feature);
-                        if (idx >= 0) {
-                          setState(() {
-                            _currentFeatureView!.composites.removeAt(idx);
-                            _featureNodes.removeAt(nodeIndex);
-                          });
-                          widget.onFeatureStructureUpdated(_getRootFeature());
-                          _displayFeature(_currentFeatureView!);
-                        } else {
-                          setState(() {
-                            _featureNodes.removeAt(nodeIndex);
-                          });
-                        }
-                      } else {
-                        setState(() {
-                          _featureNodes.removeAt(nodeIndex);
-                        });
-                      }
-                    },
-                    onRemoveCondition: () {
-                      setState(() {
-                        nodeData.condition = null;
                       });
                     },
                   );

@@ -5,13 +5,13 @@ import '../models/transformation.dart';
 class TransformationNode extends StatefulWidget {
   final String transformationName;
   final List<dynamic> args;
-  final Function(List<dynamic>) onArgsChanged;
+  final void Function(List<dynamic>)? onArgsChanged;
 
   const TransformationNode({
     super.key,
     required this.transformationName,
     required this.args,
-    required this.onArgsChanged,
+    this.onArgsChanged,
   });
 
   @override
@@ -68,30 +68,36 @@ class _TransformationNodeState extends State<TransformationNode> {
           Expanded(
             child: Text(
               _getTransformationDescription(),
-              style: const TextStyle(fontSize: 12),
+              style: TextStyle(
+                fontSize: 12,
+                color:
+                    widget.onArgsChanged == null ? Colors.grey : Colors.black,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            width: 50,
-            height: 24,
-            child: TextField(
-              controller: _argController,
-              decoration: const InputDecoration(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                border: OutlineInputBorder(),
-                isDense: true,
+          if (widget.onArgsChanged != null)
+            SizedBox(
+              width: 50,
+              height: 24,
+              child: TextField(
+                controller: _argController,
+                decoration: const InputDecoration(
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                enabled: widget.onArgsChanged != null,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(fontSize: 12),
+                onChanged: (value) {
+                  final intValue = int.tryParse(value) ?? 0;
+                  widget.onArgsChanged?.call([intValue]);
+                },
               ),
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 12),
-              onChanged: (value) {
-                final intValue = int.tryParse(value) ?? 0;
-                widget.onArgsChanged([intValue]);
-              },
             ),
-          ),
         ],
       ),
     );

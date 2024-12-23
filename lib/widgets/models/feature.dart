@@ -45,6 +45,20 @@ class Feature {
     );
   }
 
+  // Create a copy of the feature with a new name
+  Feature copyWithNewName(String newName) {
+    return Feature(
+      name: newName,
+      composites: composites.map((f) => f.clone()).toList(),
+      transformationsMap: transformationsMap.map(
+        (key, value) => MapEntry(key, value.map((t) => t.clone()).toList()),
+      ),
+      startingPoints: Map.from(startingPoints),
+      howManyValues: Map.from(howManyValues),
+      isTemplate: false, // The copy is never a template
+    );
+  }
+
   bool get isScalar => composites.isEmpty;
 
   int getScalarsCount() {

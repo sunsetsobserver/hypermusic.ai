@@ -15,6 +15,7 @@ class FeatureNode extends StatefulWidget {
   final bool canAcceptHover;
   final Feature feature;
   final Feature parentFeature;
+  final bool isFromPT;
 
   final void Function(String featureName, int?) onStartingPointChanged;
   final void Function(String featureName, int?) onHowManyChanged;
@@ -24,6 +25,8 @@ class FeatureNode extends StatefulWidget {
       onTransformationRemove;
   final void Function(String subFeatureName, Transformation trans)
       onTransformationAdd;
+  final void Function(Feature feature) onCopyFeature;
+  final void Function(Condition condition) onConditionAdd;
 
   const FeatureNode({
     super.key,
@@ -40,6 +43,9 @@ class FeatureNode extends StatefulWidget {
     required this.onRemoveCondition,
     required this.onTransformationRemove,
     required this.onTransformationAdd,
+    required this.onCopyFeature,
+    required this.onConditionAdd,
+    this.isFromPT = false,
   });
 
   @override
@@ -175,12 +181,85 @@ class _FeatureNodeState extends State<FeatureNode> {
                                   "Scalar features are immutable sequences that provide indices",
                               child: Icon(Icons.info_outline, size: 16),
                             ),
+                          if (widget.isFromPT)
+                            const Tooltip(
+                              message:
+                                  "This feature is from a Performative Transaction and cannot be modified",
+                              child: Icon(Icons.lock, size: 16),
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 20),
+                            color: Colors.blue,
+                            onPressed: () =>
+                                widget.onCopyFeature(widget.feature),
+                          ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 20),
                             color: Colors.red,
                             onPressed: widget.onRemoveFeature,
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Add condition section
+                      DragTarget<Condition>(
+                        builder: (context, candidateData, rejectedData) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color:
+                                    candidateData.isNotEmpty && !widget.isFromPT
+                                        ? Colors.orange
+                                        : Colors.grey.withOpacity(0.3),
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: widget.condition != null
+                                      ? Row(
+                                          children: [
+                                            const Icon(Icons.lock, size: 16),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              widget.condition!.name,
+                                              style:
+                                                  const TextStyle(fontSize: 12),
+                                            ),
+                                          ],
+                                        )
+                                      : Text(
+                                          widget.isFromPT
+                                              ? 'Condition locked'
+                                              : 'Drop condition here',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                ),
+                                if (widget.condition != null &&
+                                    !widget.isFromPT)
+                                  IconButton(
+                                    icon: const Icon(Icons.close, size: 16),
+                                    color: Colors.red,
+                                    onPressed: widget.onRemoveCondition,
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                        onWillAccept: (data) =>
+                            !widget.isFromPT && widget.condition == null,
+                        onAccept: (data) {
+                          if (!widget.isFromPT) {
+                            setState(() {
+                              widget.onConditionAdd(data);
+                            });
+                          }
+                        },
                       ),
                       if (!isScalar) ...[
                         const SizedBox(height: 8),
@@ -208,8 +287,14 @@ class _FeatureNodeState extends State<FeatureNode> {
                                         contentPadding: EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 8),
                                       ),
+                                      enabled: !widget.isFromPT,
                                       keyboardType: TextInputType.number,
-                                      style: const TextStyle(fontSize: 12),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: widget.isFromPT
+                                            ? Colors.grey
+                                            : Colors.black,
+                                      ),
                                       onChanged: (value) {
                                         _updateStartingPoint(
                                             subFeature.name, value);
@@ -227,8 +312,14 @@ class _FeatureNodeState extends State<FeatureNode> {
                                         contentPadding: EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 8),
                                       ),
+                                      enabled: !widget.isFromPT,
                                       keyboardType: TextInputType.number,
-                                      style: const TextStyle(fontSize: 12),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: widget.isFromPT
+                                            ? Colors.grey
+                                            : Colors.black,
+                                      ),
                                       onChanged: (value) {
                                         _updateHowMany(subFeature.name, value);
                                       },
@@ -249,7 +340,8 @@ class _FeatureNodeState extends State<FeatureNode> {
                                   return Container(
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: candidateData.isNotEmpty
+                                        color: candidateData.isNotEmpty &&
+                                                !widget.isFromPT
                                             ? Colors.green
                                             : Colors.grey.withOpacity(0.3),
                                       ),
@@ -271,30 +363,37 @@ class _FeatureNodeState extends State<FeatureNode> {
                                                 child: TransformationNode(
                                                   transformationName: t.name,
                                                   args: t.args,
-                                                  onArgsChanged: (newArgs) {
-                                                    setState(() {
-                                                      t.args = newArgs;
-                                                    });
-                                                  },
+                                                  onArgsChanged: widget.isFromPT
+                                                      ? null
+                                                      : (newArgs) {
+                                                          setState(() {
+                                                            t.args = newArgs;
+                                                          });
+                                                        },
                                                 ),
                                               ),
-                                              IconButton(
-                                                icon: const Icon(Icons.close,
-                                                    size: 20),
-                                                color: Colors.red,
-                                                onPressed: () {
-                                                  widget.onTransformationRemove(
-                                                      subFeature.name, tIndex);
-                                                },
-                                              ),
+                                              if (!widget.isFromPT)
+                                                IconButton(
+                                                  icon: const Icon(Icons.close,
+                                                      size: 20),
+                                                  color: Colors.red,
+                                                  onPressed: () {
+                                                    widget
+                                                        .onTransformationRemove(
+                                                            subFeature.name,
+                                                            tIndex);
+                                                  },
+                                                ),
                                             ],
                                           );
                                         }),
                                         if (transformations.isEmpty)
                                           Container(
                                             padding: const EdgeInsets.all(8),
-                                            child: const Text(
-                                              'Drop transformations here',
+                                            child: Text(
+                                              widget.isFromPT
+                                                  ? 'Transformations locked'
+                                                  : 'Drop transformations here',
                                               style: TextStyle(
                                                 color: Colors.grey,
                                                 fontSize: 12,
@@ -305,14 +404,16 @@ class _FeatureNodeState extends State<FeatureNode> {
                                     ),
                                   );
                                 },
-                                onWillAccept: (data) => true,
+                                onWillAccept: (data) => !widget.isFromPT,
                                 onAccept: (data) {
-                                  final newTransformation = Transformation(
-                                    data.name,
-                                    args: List.from(data.args),
-                                  );
-                                  widget.onTransformationAdd(
-                                      subFeature.name, newTransformation);
+                                  if (!widget.isFromPT) {
+                                    final newTransformation = Transformation(
+                                      data.name,
+                                      args: List.from(data.args),
+                                    );
+                                    widget.onTransformationAdd(
+                                        subFeature.name, newTransformation);
+                                  }
                                 },
                               ),
                               const SizedBox(height: 8),
