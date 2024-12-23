@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../models/transformation.dart';
 import '../models/condition.dart';
+import '../models/feature.dart';
 import 'transformation_node.dart';
 import 'condition_node.dart';
 
@@ -12,13 +13,17 @@ class FeatureNode extends StatefulWidget {
   final Condition? condition;
   final bool isHovering;
   final bool canAcceptHover;
+  final Feature feature;
+  final Feature parentFeature;
 
-  final void Function(int?) onStartingPointChanged;
-  final void Function(int?) onHowManyChanged;
+  final void Function(String featureName, int?) onStartingPointChanged;
+  final void Function(String featureName, int?) onHowManyChanged;
   final VoidCallback onRemoveFeature;
   final VoidCallback onRemoveCondition;
-
-  final void Function(int transIndex) onTransformationRemove;
+  final void Function(String subFeatureName, int transIndex)
+      onTransformationRemove;
+  final void Function(String subFeatureName, Transformation trans)
+      onTransformationAdd;
 
   const FeatureNode({
     super.key,
@@ -27,11 +32,14 @@ class FeatureNode extends StatefulWidget {
     required this.condition,
     required this.isHovering,
     required this.canAcceptHover,
+    required this.feature,
+    required this.parentFeature,
     required this.onStartingPointChanged,
     required this.onHowManyChanged,
     required this.onRemoveFeature,
     required this.onRemoveCondition,
     required this.onTransformationRemove,
+    required this.onTransformationAdd,
   });
 
   @override
@@ -39,9 +47,8 @@ class FeatureNode extends StatefulWidget {
 }
 
 class _FeatureNodeState extends State<FeatureNode> {
-  final TextEditingController _startingPointController =
-      TextEditingController();
-  final TextEditingController _howManyController = TextEditingController();
+  Map<String, TextEditingController> _startingPointControllers = {};
+  Map<String, TextEditingController> _howManyControllers = {};
 
   final GlobalKey _cardKey = GlobalKey();
 
@@ -55,158 +62,260 @@ class _FeatureNodeState extends State<FeatureNode> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeight());
+    _initializeControllers();
+  }
+
+  void _initializeControllers() {
+    // Clear old controllers
+    for (var controller in _startingPointControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in _howManyControllers.values) {
+      controller.dispose();
+    }
+    _startingPointControllers = {};
+    _howManyControllers = {};
+
+    // Initialize new controllers for each sub-feature
+    for (final subFeature in widget.feature.composites) {
+      final startingPoint =
+          widget.parentFeature.startingPoints[subFeature.name];
+      final howMany = widget.parentFeature.howManyValues[subFeature.name];
+
+      _startingPointControllers[subFeature.name] = TextEditingController(
+        text: startingPoint?.toString() ?? '',
+      );
+      _howManyControllers[subFeature.name] = TextEditingController(
+        text: howMany?.toString() ?? '',
+      );
+    }
   }
 
   @override
-  void didUpdateWidget(covariant FeatureNode oldWidget) {
+  void didUpdateWidget(FeatureNode oldWidget) {
     super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeight());
+    if (oldWidget.feature != widget.feature ||
+        oldWidget.parentFeature != widget.parentFeature) {
+      _initializeControllers();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _startingPointControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in _howManyControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   void _updateHeight() {
-    final cardContext = _cardKey.currentContext;
-    if (cardContext == null) return;
-    final box = cardContext.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final cardHeight = box.size.height;
-    final newHeight = cardHeight + extraSpacing;
-    if ((newHeight - _nodeHeight).abs() > 1e-3) {
+    if (_cardKey.currentContext != null) {
+      final RenderBox box =
+          _cardKey.currentContext!.findRenderObject() as RenderBox;
       setState(() {
-        _nodeHeight = newHeight;
+        _nodeHeight = box.size.height;
+        _nodeWidth = box.size.width;
+        _featureWidth = _nodeWidth - extraSpacing;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    Color? borderColor;
-    if (widget.isHovering) {
-      borderColor = widget.canAcceptHover ? Colors.green : Colors.red;
-    }
+    final isScalar = widget.feature.isScalar;
 
     return SizedBox(
+      key: _cardKey,
       width: _nodeWidth,
-      height: _nodeHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Column(
         children: [
-          if (widget.condition != null)
-            Positioned.fill(
-              child: ConditionNode(
-                conditionName: widget.condition!.name,
-                onRemoveCondition: widget.onRemoveCondition,
-              ),
-            ),
-          // The feature card is placed at the bottom center
-          Positioned(
-            left: (_nodeWidth - _featureWidth) / 2,
-            bottom: 0,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: _featureWidth),
-              // Use a Stack here so we can position the close button relative to the card
-              child: Stack(
-                key: _cardKey,
-                children: [
-                  Container(
-                    decoration: borderColor != null
-                        ? BoxDecoration(
-                            border: Border.all(color: borderColor, width: 2),
-                            borderRadius: BorderRadius.circular(4),
-                          )
-                        : null,
-                    child: Card(
-                      color: Colors.white,
-                      elevation: 2.0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+          Stack(
+            children: [
+              Card(
+                color: widget.isHovering
+                    ? (widget.canAcceptHover
+                        ? Colors.green[100]
+                        : Colors.red[100])
+                    : Colors.white,
+                elevation: 2.0,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
                               widget.featureName,
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 80,
-                                  child: TextField(
-                                    controller: _startingPointController,
-                                    decoration: const InputDecoration(
-                                      labelText: "Start",
-                                      hintText: "runtime?",
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                    onChanged: (value) {
-                                      final intValue = int.tryParse(value);
-                                      widget.onStartingPointChanged(intValue);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  width: 80,
-                                  child: TextField(
-                                    controller: _howManyController,
-                                    decoration: const InputDecoration(
-                                      labelText: "HowMany",
-                                      hintText: "runtime?",
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                    onChanged: (value) {
-                                      final intValue = int.tryParse(value);
-                                      widget.onHowManyChanged(intValue);
-                                    },
-                                  ),
-                                ),
-                              ],
+                          ),
+                          if (isScalar)
+                            const Tooltip(
+                              message:
+                                  "Scalar features are immutable sequences that provide indices",
+                              child: Icon(Icons.info_outline, size: 16),
                             ),
-                            const SizedBox(height: 8),
-                            ...widget.transformations
-                                .asMap()
-                                .entries
-                                .map((transEntry) {
-                              final tIndex = transEntry.key;
-                              final t = transEntry.value;
-                              return Row(
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            color: Colors.red,
+                            onPressed: widget.onRemoveFeature,
+                          ),
+                        ],
+                      ),
+                      if (!isScalar) ...[
+                        const SizedBox(height: 8),
+                        ...widget.feature.composites.map((subFeature) {
+                          final transformations = widget.parentFeature
+                              .getTransformationsForSubFeature(subFeature.name);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Settings for ${subFeature.name}:',
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
                                 children: [
                                   Expanded(
-                                    child: TransformationNode(
-                                      transformationName: t.name,
+                                    child: TextField(
+                                      controller: _startingPointControllers[
+                                          subFeature.name],
+                                      decoration: const InputDecoration(
+                                        labelText: 'Starting Point',
+                                        border: OutlineInputBorder(),
+                                        contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 8),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      style: const TextStyle(fontSize: 12),
+                                      onChanged: (value) {
+                                        final intValue = int.tryParse(value);
+                                        widget.onStartingPointChanged(
+                                            subFeature.name, intValue);
+                                      },
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, size: 20),
-                                    color: Colors.red,
-                                    onPressed: () {
-                                      widget.onTransformationRemove(tIndex);
-                                    },
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller:
+                                          _howManyControllers[subFeature.name],
+                                      decoration: const InputDecoration(
+                                        labelText: 'How Many',
+                                        border: OutlineInputBorder(),
+                                        contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 8),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      style: const TextStyle(fontSize: 12),
+                                      onChanged: (value) {
+                                        final intValue = int.tryParse(value);
+                                        widget.onHowManyChanged(
+                                            subFeature.name, intValue);
+                                      },
+                                    ),
                                   ),
                                 ],
-                              );
-                            }).toList(),
-                          ],
-                        ),
-                      ),
-                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Transformations for ${subFeature.name}:',
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              DragTarget<Transformation>(
+                                builder:
+                                    (context, candidateData, rejectedData) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: candidateData.isNotEmpty
+                                            ? Colors.green
+                                            : Colors.grey.withOpacity(0.3),
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        ...transformations
+                                            .asMap()
+                                            .entries
+                                            .map((transEntry) {
+                                          final tIndex = transEntry.key;
+                                          final t = transEntry.value;
+                                          return Row(
+                                            children: [
+                                              Expanded(
+                                                child: TransformationNode(
+                                                  transformationName: t.name,
+                                                  args: t.args,
+                                                  onArgsChanged: (newArgs) {
+                                                    setState(() {
+                                                      t.args = newArgs;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.close,
+                                                    size: 20),
+                                                color: Colors.red,
+                                                onPressed: () {
+                                                  widget.onTransformationRemove(
+                                                      subFeature.name, tIndex);
+                                                },
+                                              ),
+                                            ],
+                                          );
+                                        }),
+                                        if (transformations.isEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            child: const Text(
+                                              'Drop transformations here',
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                onWillAccept: (data) => true,
+                                onAccept: (data) {
+                                  final newTransformation = Transformation(
+                                    data.name,
+                                    args: List.from(data.args),
+                                  );
+                                  widget.onTransformationAdd(
+                                      subFeature.name, newTransformation);
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          );
+                        }),
+                      ],
+                    ],
                   ),
-                  // Position the feature close button relative to the card
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      color: Colors.red,
-                      onPressed: widget.onRemoveFeature,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

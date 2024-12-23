@@ -7,8 +7,6 @@ class MockAPI implements DataInterface {
   @override
   Future<Map<String, dynamic>> getFeature(String name) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    // Returns the raw map for now.
-    // The UI or logic layer can convert this map into a Feature object.
     return MockDataStore.features[name] ?? {};
   }
 
@@ -31,18 +29,35 @@ class MockAPI implements DataInterface {
   }
 
   @override
-  Future<void> registerFeature(String name, List<String> composites,
-      List<Map<String, dynamic>> transformations) async {
-    // transformations are expected dimension-based now:
-    // i.e. transformations = [
-    //   [ {name:"Add",args:[1]}, {name:"Mul",args:[2]} ],
-    //   [ {name:"Nop",args:[]}, ...]
-    // ]
+  Future<void> registerFeature(
+    String name,
+    List<String> composites,
+    List<Map<String, dynamic>> transformations, {
+    Map<String, dynamic>? startingPoints,
+    Map<String, dynamic>? howManyValues,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 100));
+
+    // Use provided starting points or initialize new ones
+    final Map<String, dynamic> finalStartingPoints = startingPoints ?? {};
+    final Map<String, dynamic> finalHowManyValues = howManyValues ?? {};
+
+    // Ensure all composites have entries
+    for (var composite in composites) {
+      if (!finalStartingPoints.containsKey(composite)) {
+        finalStartingPoints[composite] = null;
+      }
+      if (!finalHowManyValues.containsKey(composite)) {
+        finalHowManyValues[composite] = null;
+      }
+    }
+
     MockDataStore.features[name] = {
       "name": name,
       "composites": composites,
       "transformations": transformations,
+      "startingPoints": finalStartingPoints,
+      "howManyValues": finalHowManyValues,
     };
   }
 

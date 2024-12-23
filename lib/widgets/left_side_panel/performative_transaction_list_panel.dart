@@ -31,27 +31,54 @@ class _PerformativeTransactionListPanelState
     _ptFuture = _loadPerformativeTransactions();
   }
 
-  Future<Feature> _parseFeature(Map<String, dynamic> data) async {
+  Future<Feature> _parseFeature(Map<dynamic, dynamic> data) async {
     List<Feature> compositeFeatures = [];
     for (final cName in (data["composites"] as List)) {
-      final cData = await widget.dataInterface.getFeature(cName);
+      final cData = await widget.dataInterface.getFeature(cName as String);
       final cFeature = await _parseFeature(cData);
       compositeFeatures.add(cFeature);
     }
 
-    List<List<Transformation>> transformations = [];
-    for (final dim in (data["transformations"] as List)) {
-      List<Transformation> dimTransforms = [];
-      for (final tData in (dim as List)) {
-        dimTransforms.add(Transformation(tData["name"], args: tData["args"]));
+    // Parse transformations
+    Map<String, List<Transformation>> transformationsMap = {};
+    final transformationsList = data["transformations"] as List;
+    for (final tData in transformationsList) {
+      final Map<dynamic, dynamic> transMap = tData as Map<dynamic, dynamic>;
+      final subFeatureName = transMap["subFeatureName"] as String;
+      if (!transformationsMap.containsKey(subFeatureName)) {
+        transformationsMap[subFeatureName] = [];
       }
-      transformations.add(dimTransforms);
+      transformationsMap[subFeatureName]!.add(
+        Transformation(
+          transMap["name"] as String,
+          args: (transMap["args"] as List?)?.cast<dynamic>() ?? [],
+        ),
+      );
+    }
+
+    // Parse starting points
+    Map<String, int?> startingPoints = {};
+    if (data["startingPoints"] != null) {
+      final startingPointsMap = data["startingPoints"] as Map<dynamic, dynamic>;
+      startingPoints = startingPointsMap
+          .map((key, value) => MapEntry(key.toString(), value as int?));
+    }
+
+    // Parse howMany values
+    Map<String, int?> howManyValues = {};
+    if (data["howManyValues"] != null) {
+      final howManyMap = data["howManyValues"] as Map<dynamic, dynamic>;
+      howManyValues = howManyMap
+          .map((key, value) => MapEntry(key.toString(), value as int?));
     }
 
     return Feature(
-      name: data["name"],
+      name: data["name"] as String,
       composites: compositeFeatures,
-      transformations: transformations,
+      transformationsMap: transformationsMap,
+      startingPoints: startingPoints,
+      howManyValues: howManyValues,
+      isTemplate: data["isTemplate"] as bool? ?? false,
     );
   }
 
@@ -62,22 +89,23 @@ class _PerformativeTransactionListPanelState
     for (final ptName in ptNames) {
       final ptData =
           await widget.dataInterface.getPerformativeTransaction(ptName);
-      // ptData: { "name": ..., "description": ..., "feature": "FeatureB", "condition": "ConditionA" }
 
       // Parse condition
-      final conditionData =
-          await widget.dataInterface.getCondition(ptData["condition"]);
-      final condition = Condition(conditionData["name"],
-          description: conditionData["description"]);
+      final conditionData = await widget.dataInterface
+          .getCondition(ptData["condition"] as String);
+      final condition = Condition(
+        conditionData["name"] as String,
+        description: conditionData["description"] as String,
+      );
 
       // Parse feature
       final featureData =
-          await widget.dataInterface.getFeature(ptData["feature"]);
+          await widget.dataInterface.getFeature(ptData["feature"] as String);
       final feature = await _parseFeature(featureData);
 
       final pt = PerformativeTransaction(
-        name: ptData["name"],
-        description: ptData["description"],
+        name: ptData["name"] as String,
+        description: ptData["description"] as String,
         feature: feature,
         condition: condition,
       );

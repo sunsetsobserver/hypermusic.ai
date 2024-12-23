@@ -4,8 +4,13 @@ abstract class DataInterface {
   Future<Map<String, dynamic>> getFeature(String name);
   Future<List<String>> getAllFeatures();
   Future<Map<String, dynamic>> getTransformation(String name);
-  Future<void> registerFeature(String name, List<String> composites,
-      List<Map<String, dynamic>> transformations);
+  Future<void> registerFeature(
+    String name,
+    List<String> composites,
+    List<Map<String, dynamic>> transformations, {
+    Map<String, dynamic>? startingPoints,
+    Map<String, dynamic>? howManyValues,
+  });
   Future<void> registerTransformation(
       String name, int argsCount, String description);
 

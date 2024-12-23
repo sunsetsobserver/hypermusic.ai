@@ -5,4 +5,12 @@ class Transformation {
   List<dynamic> args;
 
   Transformation(this.name, {this.args = const []});
+
+  // Create a copy of the transformation
+  Transformation clone() {
+    return Transformation(
+      name,
+      args: List.from(args),
+    );
+  }
 }

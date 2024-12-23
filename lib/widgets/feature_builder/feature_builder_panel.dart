@@ -4,6 +4,7 @@ import '../../interfaces/data_interface.dart';
 import '../models/feature.dart';
 import '../models/performative_transaction.dart';
 import 'feature_tree_view.dart';
+import '../models/feature_runner.dart';
 
 class FeatureBuilderPanel extends StatefulWidget {
   final DataInterface dataInterface;
@@ -22,6 +23,7 @@ class FeatureBuilderPanel extends StatefulWidget {
 class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
   final FeatureBuilderWorkspaceController _workspaceController =
       FeatureBuilderWorkspaceController();
+  final FeatureRunner _runner = FeatureRunner();
 
   late Feature _rootContainerFeature;
   Feature? _viewedFeature;
@@ -50,7 +52,6 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                   children: [
                     ElevatedButton(
                       onPressed: () async {
-                        // When compiling, always use the full root tree (_rootContainerFeature)
                         final newName = await _showCompileDialog(context);
                         if (newName == null || newName.isEmpty) return;
 
@@ -58,7 +59,7 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                             await _workspaceController.compileWorkspace(
                           newName,
                           widget.dataInterface,
-                          _rootContainerFeature, // Always compile from root
+                          _rootContainerFeature,
                         );
 
                         if (!mounted) return;
@@ -81,14 +82,25 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                       child: const Text("Compile"),
                     ),
                     ElevatedButton(
-                      onPressed: () {
-                        _workspaceController.clearWorkspace();
-                        setState(() {
-                          _rootContainerFeature = Feature(name: "New Feature");
-                          _viewedFeature = _rootContainerFeature;
-                        });
+                      onPressed: () async {
+                        if (_viewedFeature == null) {
+                          scaffoldMessenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('No feature selected to run.'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        // Run the feature with a default value of 1 if no howMany is specified
+                        final results = _runner.runFeature(_viewedFeature!, 1);
+                        _runner.printResults(results);
+
+                        // Show results in a dialog
+                        if (!mounted) return;
+                        await _showResultsDialog(context, results);
                       },
-                      child: const Text("Clear"),
+                      child: const Text("Run Feature"),
                     ),
                   ],
                 ),
@@ -97,18 +109,16 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                 child: Row(
                   children: [
                     Expanded(
-                      flex: 3,
+                      flex: 4,
                       child: FeatureBuilderWorkspace(
                         controller: _workspaceController,
                         onTopLevelStructureAdded: (Feature f,
                             {PerformativeTransaction? pt}) {
-                          // Just update state to rebuild tree
                           setState(() {});
                         },
                         onFeatureStructureUpdated: (Feature updatedRoot) {
                           setState(() {
                             _rootContainerFeature = updatedRoot;
-                            // If viewedFeature was removed or changed, ensure it still exists
                             if (!_featureExistsInTree(
                                 _rootContainerFeature, _viewedFeature)) {
                               _viewedFeature = _rootContainerFeature;
@@ -124,7 +134,6 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                         rootFeature: _rootContainerFeature,
                         viewedFeature: _viewedFeature,
                         onNodeSelected: (feature) {
-                          // Only compound features are selectable
                           if (!feature.isScalar) {
                             setState(() {
                               _viewedFeature = feature;
@@ -161,7 +170,7 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: const Text("Compile New Feature"),
+          title: const Text("Compile Feature"),
           content: TextField(
             controller: nameController,
             decoration: const InputDecoration(labelText: 'Feature Name'),
@@ -172,8 +181,36 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+              onPressed: () => Navigator.pop(ctx, nameController.text),
               child: const Text("Compile"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showResultsDialog(
+      BuildContext context, List<List<int>> results) async {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text("Feature Results"),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < results.length; i++)
+                  Text("Step $i: ${results[i]}"),
+              ],
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Close"),
             ),
           ],
         );
