@@ -72,37 +72,15 @@ class _FeatureNodeState extends State<FeatureNode> {
   }
 
   void _initializeControllers() {
-    // Clear old controllers
-    for (var controller in _startingPointControllers.values) {
-      controller.dispose();
-    }
-    for (var controller in _howManyControllers.values) {
-      controller.dispose();
-    }
-    _startingPointControllers = {};
-    _howManyControllers = {};
-
-    // Initialize new controllers for each sub-feature
+    // Initialize controllers for each sub-feature
     for (final subFeature in widget.feature.composites) {
-      final startingPoint =
-          widget.parentFeature.startingPoints[subFeature.name];
-      final howMany = widget.parentFeature.howManyValues[subFeature.name];
+      final startingPoint = widget.feature.startingPoints[subFeature.name];
+      final howMany = widget.feature.howManyValues[subFeature.name];
 
-      _startingPointControllers[subFeature.name] = TextEditingController(
-        text: startingPoint?.toString() ?? '',
-      );
-      _howManyControllers[subFeature.name] = TextEditingController(
-        text: howMany?.toString() ?? '',
-      );
-    }
-  }
-
-  @override
-  void didUpdateWidget(FeatureNode oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.feature != widget.feature ||
-        oldWidget.parentFeature != widget.parentFeature) {
-      _initializeControllers();
+      _startingPointControllers[subFeature.name] =
+          TextEditingController(text: startingPoint?.toString() ?? '');
+      _howManyControllers[subFeature.name] =
+          TextEditingController(text: howMany?.toString() ?? '');
     }
   }
 
@@ -139,6 +117,10 @@ class _FeatureNodeState extends State<FeatureNode> {
     final intValue = int.tryParse(value);
     widget.feature.setHowMany(subFeatureName, intValue);
     widget.onHowManyChanged(subFeatureName, intValue);
+  }
+
+  void _showCopyDialog(BuildContext context) {
+    widget.onCopyFeature(widget.feature);
   }
 
   @override
@@ -187,12 +169,6 @@ class _FeatureNodeState extends State<FeatureNode> {
                                   "This feature is from a Performative Transaction and cannot be modified",
                               child: Icon(Icons.lock, size: 16),
                             ),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 20),
-                            color: Colors.blue,
-                            onPressed: () =>
-                                widget.onCopyFeature(widget.feature),
-                          ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 20),
                             color: Colors.red,
@@ -264,7 +240,7 @@ class _FeatureNodeState extends State<FeatureNode> {
                       if (!isScalar) ...[
                         const SizedBox(height: 8),
                         ...widget.feature.composites.map((subFeature) {
-                          final transformations = widget.parentFeature
+                          final transformations = widget.feature
                               .getTransformationsForSubFeature(subFeature.name);
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,6 +344,12 @@ class _FeatureNodeState extends State<FeatureNode> {
                                                       : (newArgs) {
                                                           setState(() {
                                                             t.args = newArgs;
+                                                            // Notify parent about the change
+                                                            widget
+                                                                .onTransformationAdd(
+                                                                    subFeature
+                                                                        .name,
+                                                                    t);
                                                           });
                                                         },
                                                 ),

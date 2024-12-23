@@ -5,6 +5,7 @@ import '../models/feature.dart';
 import '../models/performative_transaction.dart';
 import 'feature_tree_view.dart';
 import '../models/feature_runner.dart';
+import '../left_side_panel/left_side_panel.dart';
 
 class FeatureBuilderPanel extends StatefulWidget {
   final DataInterface dataInterface;
@@ -112,9 +113,16 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                       flex: 4,
                       child: FeatureBuilderWorkspace(
                         controller: _workspaceController,
+                        dataInterface: widget.dataInterface,
                         onTopLevelStructureAdded: (Feature f,
                             {PerformativeTransaction? pt}) {
                           setState(() {});
+                          // Find and refresh the LeftSidePanel
+                          final leftSidePanel = context
+                              .findAncestorStateOfType<LeftSidePanelState>();
+                          if (leftSidePanel != null) {
+                            leftSidePanel.refreshFeatures();
+                          }
                         },
                         onFeatureStructureUpdated: (Feature updatedRoot) {
                           setState(() {

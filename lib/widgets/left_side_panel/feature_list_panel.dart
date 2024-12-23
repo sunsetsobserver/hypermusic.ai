@@ -7,36 +7,43 @@ import 'panel_header.dart';
 import 'category_section.dart';
 import 'draggable_feature_item.dart';
 import '../../interfaces/data_interface.dart';
+import '../../mock/user_toolbox.dart';
 
-class FeatureListPanel extends StatelessWidget {
+class FeatureListPanel extends StatefulWidget {
   final DataInterface dataInterface;
 
   const FeatureListPanel({super.key, required this.dataInterface});
 
+  @override
+  State<FeatureListPanel> createState() => _FeatureListPanelState();
+}
+
+class _FeatureListPanelState extends State<FeatureListPanel> {
   Future<Feature> _parseFeature(Map<dynamic, dynamic> data) async {
     // Parse composites
     List<Feature> compositeFeatures = [];
     for (final cName in (data["composites"] as List)) {
-      final cData = await dataInterface.getFeature(cName as String);
+      final cData = await widget.dataInterface.getFeature(cName as String);
       final cFeature = await _parseFeature(cData);
       compositeFeatures.add(cFeature);
     }
 
     // Parse transformations
     Map<String, List<Transformation>> transformationsMap = {};
-    final transformationsList = data["transformations"] as List;
-    for (final tData in transformationsList) {
-      final Map<dynamic, dynamic> transMap = tData as Map<dynamic, dynamic>;
-      final subFeatureName = transMap["subFeatureName"] as String;
-      if (!transformationsMap.containsKey(subFeatureName)) {
-        transformationsMap[subFeatureName] = [];
+    if (data["transformations"] != null) {
+      for (final t in data["transformations"] as List) {
+        final tMap = t as Map<dynamic, dynamic>;
+        final subFeatureName = tMap["subFeatureName"] as String;
+        final transformation = Transformation(
+          tMap["name"] as String,
+          args: List<dynamic>.from(tMap["args"] as List),
+        );
+
+        if (!transformationsMap.containsKey(subFeatureName)) {
+          transformationsMap[subFeatureName] = [];
+        }
+        transformationsMap[subFeatureName]!.add(transformation);
       }
-      transformationsMap[subFeatureName]!.add(
-        Transformation(
-          transMap["name"] as String,
-          args: (transMap["args"] as List?)?.cast<dynamic>() ?? [],
-        ),
-      );
     }
 
     // Parse starting points
@@ -66,14 +73,19 @@ class FeatureListPanel extends StatelessWidget {
   }
 
   Future<List<Feature>> _loadFeatures() async {
-    final featureNames = await dataInterface.getAllFeatures();
+    final featureNames = await widget.dataInterface.getAllFeatures();
     List<Feature> features = [];
     for (final name in featureNames) {
-      final fData = await dataInterface.getFeature(name);
+      final fData = await widget.dataInterface.getFeature(name);
       final feature = await _parseFeature(fData);
       features.add(feature);
     }
     return features;
+  }
+
+  Future<void> _removeFeature(String name) async {
+    UserToolbox.removeFeature(name);
+    setState(() {}); // Refresh the list
   }
 
   @override
@@ -106,8 +118,12 @@ class FeatureListPanel extends StatelessWidget {
               CategorySection<Feature>(
                 categoryName: "All Features",
                 items: features,
-                itemBuilder: (ctx, feature) =>
-                    DraggableFeatureItem(feature: feature),
+                itemBuilder: (ctx, feature) => DraggableFeatureItem(
+                  feature: feature,
+                  dataInterface: widget.dataInterface,
+                  onFeatureRemoved: () => _removeFeature(feature.name),
+                  onFeatureAdded: () => setState(() {}),
+                ),
               ),
             ],
           );

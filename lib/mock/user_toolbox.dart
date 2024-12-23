@@ -1,86 +1,170 @@
 import 'mock_data_store.dart';
 
 class UserToolbox {
-  // Maps to store user's private collections
-  static final Map<String, Map<String, dynamic>> features = {};
-  static final Map<String, Map<String, dynamic>> transformations = {};
-  static final Map<String, Map<String, dynamic>> conditions = {};
-  static final Map<String, Map<String, dynamic>> performativeTransactions = {};
+  // Maps to store references to user's selected items
+  static final Set<String> featureNames = {};
+  static final Set<String> transformationNames = {};
+  static final Set<String> conditionNames = {};
+  static final Set<String> performativeTransactionNames = {};
 
   // Initialize toolbox with all items from MockDataStore
   static void initializeFromMockData() {
-    // Copy features
-    MockDataStore.features.forEach((key, value) {
-      features[key] = Map.from(value);
+    // Add references to features
+    MockDataStore.features.keys.forEach((key) {
+      featureNames.add(key);
     });
 
-    // Copy transformations
-    MockDataStore.transformations.forEach((key, value) {
-      transformations[key] = Map.from(value);
+    // Add references to transformations
+    MockDataStore.transformations.keys.forEach((key) {
+      transformationNames.add(key);
     });
 
-    // Copy conditions
-    MockDataStore.conditions.forEach((key, value) {
-      conditions[key] = Map.from(value);
+    // Add references to conditions
+    MockDataStore.conditions.keys.forEach((key) {
+      conditionNames.add(key);
     });
 
-    // Copy performative transactions
-    MockDataStore.performativeTransactions.forEach((key, value) {
-      performativeTransactions[key] = Map.from(value);
+    // Add references to performative transactions
+    MockDataStore.performativeTransactions.keys.forEach((key) {
+      performativeTransactionNames.add(key);
     });
   }
 
   // Methods to manage features
   static void addFeature(String name, Map<String, dynamic> featureData) {
-    features[name] = featureData;
+    // Add to MockDataStore first
+    MockDataStore.features[name] = featureData;
+    // Then add reference to toolbox
+    featureNames.add(name);
   }
 
   static void removeFeature(String name) {
-    features.remove(name);
+    featureNames.remove(name);
   }
 
   static bool hasFeature(String name) {
-    return features.containsKey(name);
+    return featureNames.contains(name);
+  }
+
+  // Get feature data from MockDataStore
+  static Map<String, dynamic>? getFeature(String name) {
+    if (!hasFeature(name)) return null;
+    return MockDataStore.features[name];
+  }
+
+  // Get all features from MockDataStore that are in the toolbox
+  static Map<String, Map<String, dynamic>> get features {
+    final result = <String, Map<String, dynamic>>{};
+    for (final name in featureNames) {
+      final feature = MockDataStore.features[name];
+      if (feature != null) {
+        result[name] = feature;
+      }
+    }
+    return result;
   }
 
   // Methods to manage transformations
   static void addTransformation(
       String name, Map<String, dynamic> transformationData) {
-    transformations[name] = transformationData;
+    // Add to MockDataStore first
+    MockDataStore.transformations[name] = transformationData;
+    // Then add reference to toolbox
+    transformationNames.add(name);
   }
 
   static void removeTransformation(String name) {
-    transformations.remove(name);
+    transformationNames.remove(name);
   }
 
   static bool hasTransformation(String name) {
-    return transformations.containsKey(name);
+    return transformationNames.contains(name);
+  }
+
+  // Get transformation data from MockDataStore
+  static Map<String, dynamic>? getTransformation(String name) {
+    if (!hasTransformation(name)) return null;
+    return MockDataStore.transformations[name];
+  }
+
+  // Get all transformations from MockDataStore that are in the toolbox
+  static Map<String, Map<String, dynamic>> get transformations {
+    final result = <String, Map<String, dynamic>>{};
+    for (final name in transformationNames) {
+      final transformation = MockDataStore.transformations[name];
+      if (transformation != null) {
+        result[name] = transformation;
+      }
+    }
+    return result;
   }
 
   // Methods to manage conditions
   static void addCondition(String name, Map<String, dynamic> conditionData) {
-    conditions[name] = conditionData;
+    // Add to MockDataStore first
+    MockDataStore.conditions[name] = conditionData;
+    // Then add reference to toolbox
+    conditionNames.add(name);
   }
 
   static void removeCondition(String name) {
-    conditions.remove(name);
+    conditionNames.remove(name);
   }
 
   static bool hasCondition(String name) {
-    return conditions.containsKey(name);
+    return conditionNames.contains(name);
+  }
+
+  // Get condition data from MockDataStore
+  static Map<String, dynamic>? getCondition(String name) {
+    if (!hasCondition(name)) return null;
+    return MockDataStore.conditions[name];
+  }
+
+  // Get all conditions from MockDataStore that are in the toolbox
+  static Map<String, Map<String, dynamic>> get conditions {
+    final result = <String, Map<String, dynamic>>{};
+    for (final name in conditionNames) {
+      final condition = MockDataStore.conditions[name];
+      if (condition != null) {
+        result[name] = condition;
+      }
+    }
+    return result;
   }
 
   // Methods to manage performative transactions
   static void addPerformativeTransaction(
       String name, Map<String, dynamic> ptData) {
-    performativeTransactions[name] = ptData;
+    // Add to MockDataStore first
+    MockDataStore.performativeTransactions[name] = ptData;
+    // Then add reference to toolbox
+    performativeTransactionNames.add(name);
   }
 
   static void removePerformativeTransaction(String name) {
-    performativeTransactions.remove(name);
+    performativeTransactionNames.remove(name);
   }
 
   static bool hasPerformativeTransaction(String name) {
-    return performativeTransactions.containsKey(name);
+    return performativeTransactionNames.contains(name);
+  }
+
+  // Get performative transaction data from MockDataStore
+  static Map<String, dynamic>? getPerformativeTransaction(String name) {
+    if (!hasPerformativeTransaction(name)) return null;
+    return MockDataStore.performativeTransactions[name];
+  }
+
+  // Get all performative transactions from MockDataStore that are in the toolbox
+  static Map<String, Map<String, dynamic>> get performativeTransactions {
+    final result = <String, Map<String, dynamic>>{};
+    for (final name in performativeTransactionNames) {
+      final pt = MockDataStore.performativeTransactions[name];
+      if (pt != null) {
+        result[name] = pt;
+      }
+    }
+    return result;
   }
 }

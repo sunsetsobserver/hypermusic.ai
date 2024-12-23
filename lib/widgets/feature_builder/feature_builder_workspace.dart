@@ -5,6 +5,9 @@ import '../models/condition.dart';
 import '../models/performative_transaction.dart';
 import 'feature_node.dart';
 import '../../interfaces/data_interface.dart';
+import '../left_side_panel/left_side_panel.dart';
+import '../../mock/user_toolbox.dart';
+import '../../mock/mock_data_store.dart';
 
 class _FeatureNodeData {
   Offset position;
@@ -23,17 +26,17 @@ class FeatureBuilderWorkspaceController {
   _FeatureBuilderWorkspaceState? _state;
 
   Map<String, dynamic> _serializeFeature(Feature feature) {
-    // Convert transformationsMap to a list format for serialization
+    // Collect all transformations for this feature
     List<Map<String, dynamic>> allTransformations = [];
-    feature.transformationsMap.forEach((subFeatureName, transformations) {
-      for (var t in transformations) {
+    for (final entry in feature.transformationsMap.entries) {
+      for (final trans in entry.value) {
         allTransformations.add({
-          "name": t.name,
-          "args": t.args,
-          "subFeatureName": subFeatureName,
+          "subFeatureName": entry.key,
+          "name": trans.name,
+          "args": trans.args,
         });
       }
-    });
+    }
 
     return {
       "name": feature.name,
@@ -51,7 +54,7 @@ class FeatureBuilderWorkspaceController {
       String newName, DataInterface dataInterface, Feature rootFeature) async {
     // First register all sub-features recursively
     for (var composite in rootFeature.composites) {
-      await _registerFeatureRecursively(composite, dataInterface);
+      await _state?._registerFeatureRecursively(composite, dataInterface);
     }
 
     // Then register the root feature
@@ -69,24 +72,6 @@ class FeatureBuilderWorkspaceController {
     return true;
   }
 
-  Future<void> _registerFeatureRecursively(
-      Feature feature, DataInterface dataInterface) async {
-    // First register all sub-features
-    for (var composite in feature.composites) {
-      await _registerFeatureRecursively(composite, dataInterface);
-    }
-
-    // Then register this feature
-    final featureData = _serializeFeature(feature);
-    await dataInterface.registerFeature(
-      feature.name,
-      featureData["composites"] as List<String>,
-      featureData["transformations"] as List<Map<String, dynamic>>,
-      startingPoints: featureData["startingPoints"] as Map<String, dynamic>,
-      howManyValues: featureData["howManyValues"] as Map<String, dynamic>,
-    );
-  }
-
   void clearWorkspace() {
     _state?._clearAll();
   }
@@ -101,12 +86,14 @@ class FeatureBuilderWorkspace extends StatefulWidget {
   final void Function(Feature f, {PerformativeTransaction? pt})
       onTopLevelStructureAdded;
   final void Function(Feature updatedRoot) onFeatureStructureUpdated;
+  final DataInterface dataInterface;
 
   const FeatureBuilderWorkspace({
     super.key,
     required this.controller,
     required this.onTopLevelStructureAdded,
     required this.onFeatureStructureUpdated,
+    required this.dataInterface,
   });
 
   @override
@@ -131,6 +118,54 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
   void dispose() {
     widget.controller._state = null;
     super.dispose();
+  }
+
+  Map<String, dynamic> _serializeFeature(Feature feature) {
+    // Collect all transformations for this feature
+    List<Map<String, dynamic>> allTransformations = [];
+    for (final entry in feature.transformationsMap.entries) {
+      for (final trans in entry.value) {
+        allTransformations.add({
+          "subFeatureName": entry.key,
+          "name": trans.name,
+          "args": trans.args,
+        });
+      }
+    }
+
+    return {
+      "name": feature.name,
+      "composites": feature.composites.map((c) => c.name).toList(),
+      "transformations": allTransformations,
+      "startingPoints": feature.startingPoints,
+      "howManyValues": feature.howManyValues,
+      // Add sub-features data
+      "subFeatures":
+          feature.composites.map((c) => _serializeFeature(c)).toList(),
+    };
+  }
+
+  Future<void> _registerFeatureRecursively(
+      Feature feature, DataInterface dataInterface) async {
+    // First register all sub-features
+    for (var composite in feature.composites) {
+      await _registerFeatureRecursively(composite, dataInterface);
+    }
+
+    // Then register this feature
+    final featureData = _serializeFeature(feature);
+
+    // Update the database through dataInterface
+    await dataInterface.registerFeature(
+      feature.name,
+      featureData["composites"] as List<String>,
+      featureData["transformations"] as List<Map<String, dynamic>>,
+      startingPoints: featureData["startingPoints"] as Map<String, dynamic>,
+      howManyValues: featureData["howManyValues"] as Map<String, dynamic>,
+    );
+
+    // Add reference to toolbox
+    UserToolbox.addFeature(feature.name, MockDataStore.features[feature.name]!);
   }
 
   void _clearAll() {
@@ -178,46 +213,6 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
     return false;
   }
 
-  Future<void> _showCopyDialog(Feature feature) async {
-    final TextEditingController nameController = TextEditingController();
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text("Copy Feature"),
-          content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(labelText: 'New Feature Name'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, null),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, nameController.text),
-              child: const Text("Copy"),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (newName != null && newName.isNotEmpty) {
-      final copiedFeature = feature.copyWithNewName(newName);
-      setState(() {
-        if (_currentFeatureView == null) {
-          _currentFeatureView = Feature(name: "New Feature");
-          widget.onFeatureStructureUpdated(_currentFeatureView!);
-        }
-        _currentFeatureView!.addComposite(copiedFeature);
-        widget.onFeatureStructureUpdated(_getRootFeature());
-        widget.onTopLevelStructureAdded(copiedFeature);
-        _displayFeature(_currentFeatureView!);
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -230,37 +225,44 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
               return details.data is Feature ||
                   details.data is PerformativeTransaction;
             },
-            onAcceptWithDetails: (details) {
+            onAcceptWithDetails: (details) async {
               final data = details.data;
               if (_currentFeatureView == null) {
                 _currentFeatureView = Feature(name: "New Feature");
                 widget.onFeatureStructureUpdated(_currentFeatureView!);
               }
 
-              setState(() {
-                if (data is Feature) {
-                  _currentFeatureView!.addComposite(data);
+              if (data is Feature) {
+                // Load the feature from the database instead of using the dragged one
+                final featureData =
+                    await widget.dataInterface.getFeature(data.name);
+                final feature = await _parseFeature(featureData);
+                setState(() {
+                  _currentFeatureView!.addComposite(feature);
                   widget.onFeatureStructureUpdated(_getRootFeature());
-                  widget.onTopLevelStructureAdded(data);
+                  widget.onTopLevelStructureAdded(feature);
                   _displayFeature(_currentFeatureView!);
-                } else if (data is PerformativeTransaction) {
-                  final feature = data.feature;
+                });
+              } else if (data is PerformativeTransaction) {
+                // Load the feature from the database for PT as well
+                final featureData =
+                    await widget.dataInterface.getFeature(data.feature.name);
+                final feature = await _parseFeature(featureData);
+                setState(() {
                   _currentFeatureView!.addComposite(feature);
                   widget.onFeatureStructureUpdated(_getRootFeature());
                   widget.onTopLevelStructureAdded(feature, pt: data);
                   _displayFeature(_currentFeatureView!);
 
                   // Find and update the node after display
-                  setState(() {
-                    final nodeIndex = _featureNodes
-                        .indexWhere((node) => node.feature == feature);
-                    if (nodeIndex != -1) {
-                      _featureNodes[nodeIndex].condition = data.condition;
-                      _featureNodes[nodeIndex].isFromPT = true;
-                    }
-                  });
-                }
-              });
+                  final nodeIndex = _featureNodes
+                      .indexWhere((node) => node.feature.name == feature.name);
+                  if (nodeIndex != -1) {
+                    _featureNodes[nodeIndex].condition = data.condition;
+                    _featureNodes[nodeIndex].isFromPT = true;
+                  }
+                });
+              }
             },
           ),
         ),
@@ -284,12 +286,14 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
 
                   return FeatureNode(
                     featureName: nodeData.feature.name,
-                    transformations: [],
+                    transformations: nodeData.feature.transformationsMap.values
+                        .expand((x) => x)
+                        .toList(),
                     condition: nodeData.condition,
                     isHovering: isHovering,
                     canAcceptHover: canAcceptHover,
                     feature: nodeData.feature,
-                    parentFeature: _currentFeatureView!,
+                    parentFeature: nodeData.feature,
                     isFromPT: nodeData.isFromPT,
                     onStartingPointChanged: (subFeatureName, value) {
                       if (nodeData.isFromPT) return;
@@ -327,27 +331,85 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
                     onTransformationRemove: (subFeatureName, transIndex) {
                       if (nodeData.isFromPT) return;
                       setState(() {
-                        _currentFeatureView!.removeTransformationForSubFeature(
+                        nodeData.feature.removeTransformationForSubFeature(
                             subFeatureName, transIndex);
                         widget.onFeatureStructureUpdated(_getRootFeature());
+                        // Save the updated feature to the database
+                        _registerFeatureRecursively(
+                            nodeData.feature, widget.dataInterface);
                       });
                     },
                     onTransformationAdd: (subFeatureName, trans) {
                       if (nodeData.isFromPT) return;
                       setState(() {
-                        _currentFeatureView!.addTransformationForSubFeature(
+                        nodeData.feature.addTransformationForSubFeature(
                             subFeatureName, trans);
                         widget.onFeatureStructureUpdated(_getRootFeature());
+                        // Save the updated feature to the database
+                        _registerFeatureRecursively(
+                            nodeData.feature, widget.dataInterface);
                       });
                     },
-                    onCopyFeature: (feature) {
-                      setState(() {
-                        final copiedFeature = feature.clone();
-                        _currentFeatureView!.composites.add(copiedFeature);
-                        widget.onFeatureStructureUpdated(_getRootFeature());
-                        widget.onTopLevelStructureAdded(copiedFeature);
-                        _displayFeature(_currentFeatureView!);
-                      });
+                    onCopyFeature: (feature) async {
+                      final TextEditingController nameController =
+                          TextEditingController();
+                      final newName = await showDialog<String>(
+                        context: context,
+                        builder: (ctx) {
+                          return AlertDialog(
+                            title: const Text("Copy Feature"),
+                            content: TextField(
+                              controller: nameController,
+                              decoration: const InputDecoration(
+                                  labelText: 'New Feature Name'),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, null),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () =>
+                                    Navigator.pop(ctx, nameController.text),
+                                child: const Text("Copy"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (newName != null && newName.isNotEmpty) {
+                        final copiedFeature = feature.copyWithNewName(newName);
+
+                        // First register the feature in the toolbox
+                        await _registerFeatureRecursively(
+                            copiedFeature, widget.dataInterface);
+
+                        // Add to current view and notify about changes
+                        setState(() {
+                          _currentFeatureView!.composites.add(copiedFeature);
+                          widget.onFeatureStructureUpdated(_getRootFeature());
+                          widget.onTopLevelStructureAdded(copiedFeature);
+                          _displayFeature(_currentFeatureView!);
+                        });
+
+                        // Show a success message
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Feature "$newName" copied successfully!'),
+                            ),
+                          );
+
+                          // Find and refresh the LeftSidePanel
+                          final leftSidePanel = context
+                              .findAncestorStateOfType<LeftSidePanelState>();
+                          if (leftSidePanel != null) {
+                            leftSidePanel.refreshFeatures();
+                          }
+                        }
+                      }
                     },
                     onConditionAdd: (condition) {
                       if (nodeData.isFromPT) return;
@@ -413,5 +475,59 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
       return current;
     }
     return _currentFeatureView!;
+  }
+
+  // Add this helper method to parse feature data
+  Future<Feature> _parseFeature(Map<dynamic, dynamic> data) async {
+    // Parse composites
+    List<Feature> compositeFeatures = [];
+    for (final cName in (data["composites"] as List)) {
+      final cData = await widget.dataInterface.getFeature(cName as String);
+      final cFeature = await _parseFeature(cData);
+      compositeFeatures.add(cFeature);
+    }
+
+    // Parse transformations
+    Map<String, List<Transformation>> transformationsMap = {};
+    if (data["transformations"] != null) {
+      for (final t in data["transformations"] as List) {
+        final tMap = t as Map<dynamic, dynamic>;
+        final subFeatureName = tMap["subFeatureName"] as String;
+        final transformation = Transformation(
+          tMap["name"] as String,
+          args: List<dynamic>.from(tMap["args"] as List),
+        );
+
+        if (!transformationsMap.containsKey(subFeatureName)) {
+          transformationsMap[subFeatureName] = [];
+        }
+        transformationsMap[subFeatureName]!.add(transformation);
+      }
+    }
+
+    // Parse starting points
+    Map<String, int?> startingPoints = {};
+    if (data["startingPoints"] != null) {
+      final startingPointsMap = data["startingPoints"] as Map<dynamic, dynamic>;
+      startingPoints = startingPointsMap
+          .map((key, value) => MapEntry(key.toString(), value as int?));
+    }
+
+    // Parse howMany values
+    Map<String, int?> howManyValues = {};
+    if (data["howManyValues"] != null) {
+      final howManyMap = data["howManyValues"] as Map<dynamic, dynamic>;
+      howManyValues = howManyMap
+          .map((key, value) => MapEntry(key.toString(), value as int?));
+    }
+
+    return Feature(
+      name: data["name"] as String,
+      composites: compositeFeatures,
+      transformationsMap: transformationsMap,
+      startingPoints: startingPoints,
+      howManyValues: howManyValues,
+      isTemplate: data["isTemplate"] as bool? ?? false,
+    );
   }
 }

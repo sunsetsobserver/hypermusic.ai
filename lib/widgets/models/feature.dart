@@ -80,14 +80,15 @@ class Feature {
   }
 
   void addComposite(Feature f) {
-    // Don't clone, use the original reference
-    composites = List.from(composites)..add(f);
+    // Clone the feature before adding it to ensure it's a separate instance
+    final clonedFeature = f.clone();
+    composites = List.from(composites)..add(clonedFeature);
     if (!isScalar) {
       // Only initialize if not already present
-      if (!transformationsMap.containsKey(f.name)) {
-        transformationsMap[f.name] = [];
-        startingPoints[f.name] = null;
-        howManyValues[f.name] = null;
+      if (!transformationsMap.containsKey(clonedFeature.name)) {
+        transformationsMap[clonedFeature.name] = [];
+        startingPoints[clonedFeature.name] = null;
+        howManyValues[clonedFeature.name] = null;
       }
     }
   }
