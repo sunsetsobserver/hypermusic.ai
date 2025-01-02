@@ -359,6 +359,17 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
                             nodeData.feature, widget.dataInterface);
                       });
                     },
+                    onTransformationUpdate: (subFeatureName, trans) {
+                      if (nodeData.isFromPT) return;
+                      setState(() {
+                        nodeData.feature.updateTransformationForSubFeature(
+                            subFeatureName, trans);
+                        widget.onFeatureStructureUpdated(_getRootFeature());
+                        // Save the updated feature to the database
+                        _registerFeatureRecursively(
+                            nodeData.feature, widget.dataInterface);
+                      });
+                    },
                     onCopyFeature: (feature) async {
                       final TextEditingController nameController =
                           TextEditingController();

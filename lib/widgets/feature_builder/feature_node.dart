@@ -24,6 +24,8 @@ class FeatureNode extends StatefulWidget {
       onTransformationRemove;
   final void Function(String subFeatureName, Transformation trans)
       onTransformationAdd;
+  final void Function(String subFeatureName, Transformation trans)
+      onTransformationUpdate;
   final void Function(Feature feature) onCopyFeature;
   final void Function(Condition condition) onConditionAdd;
 
@@ -42,6 +44,7 @@ class FeatureNode extends StatefulWidget {
     required this.onRemoveCondition,
     required this.onTransformationRemove,
     required this.onTransformationAdd,
+    required this.onTransformationUpdate,
     required this.onCopyFeature,
     required this.onConditionAdd,
     this.isFromPT = false,
@@ -111,6 +114,10 @@ class _FeatureNodeState extends State<FeatureNode> {
     final intValue = int.tryParse(value);
     widget.feature.setHowMany(subFeatureName, intValue);
     widget.onHowManyChanged(subFeatureName, intValue);
+  }
+
+  List<Transformation> _getTransformationsForSubFeature(String subFeatureName) {
+    return widget.feature.transformationsMap[subFeatureName] ?? [];
   }
 
   @override
@@ -334,9 +341,9 @@ class _FeatureNodeState extends State<FeatureNode> {
                                                       : (newArgs) {
                                                           setState(() {
                                                             t.args = newArgs;
-                                                            // Notify parent about the change
+                                                            // Use updateTransformation instead of add
                                                             widget
-                                                                .onTransformationAdd(
+                                                                .onTransformationUpdate(
                                                                     subFeature
                                                                         .name,
                                                                     t);

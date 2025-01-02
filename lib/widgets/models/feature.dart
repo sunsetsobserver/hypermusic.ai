@@ -32,51 +32,49 @@ class Feature {
       );
     }
 
-    // Otherwise, clone everything
+    // Create a deep copy of transformations
+    final newTransformationsMap = <String, List<Transformation>>{};
+    transformationsMap.forEach((key, value) {
+      newTransformationsMap[key] = value.map((t) => t.clone()).toList();
+    });
+
+    // Create a deep copy of composites
+    final newComposites = composites.map((f) => f.clone()).toList();
+
     return Feature(
       name: name,
-      composites: composites.map((f) => f.clone()).toList(),
-      transformationsMap: transformationsMap.map(
-        (key, value) => MapEntry(key, value.map((t) => t.clone()).toList()),
-      ),
+      composites: newComposites,
+      transformationsMap: newTransformationsMap,
       startingPoints: Map.from(startingPoints),
       howManyValues: Map.from(howManyValues),
       isTemplate: isTemplate,
     );
   }
 
-  // Create a copy of the feature with a new name
+  // Create a copy with a new name
   Feature copyWithNewName(String newName) {
     return Feature(
       name: newName,
       composites: composites.map((f) => f.clone()).toList(),
-      transformationsMap: transformationsMap.map(
-        (key, value) => MapEntry(key, value.map((t) => t.clone()).toList()),
-      ),
+      transformationsMap: Map.from(transformationsMap),
       startingPoints: Map.from(startingPoints),
       howManyValues: Map.from(howManyValues),
-      isTemplate: false, // The copy is never a template
     );
   }
 
+  // Get whether this feature is scalar (has no composites)
   bool get isScalar => composites.isEmpty;
 
+  // Get the total number of scalar features in this feature's hierarchy
   int getScalarsCount() {
     if (isScalar) return 1;
-    int count = 0;
-    for (final c in composites) {
-      count += c.getScalarsCount();
-    }
-    return count;
+    return composites.fold<int>(
+        0, (sum, composite) => sum + composite.getScalarsCount());
   }
 
-  int getSubTreeSize() {
-    if (isScalar) return 0;
-    int size = composites.length;
-    for (final c in composites) {
-      size += c.getSubTreeSize();
-    }
-    return size;
+  // Get transformations for a specific sub-feature
+  List<Transformation> getTransformationsForSubFeature(String subFeatureName) {
+    return transformationsMap[subFeatureName] ?? [];
   }
 
   void addComposite(Feature f) {
@@ -93,18 +91,32 @@ class Feature {
     }
   }
 
-  // Get transformations for a specific sub-feature
-  List<Transformation> getTransformationsForSubFeature(String subFeatureName) {
-    return transformationsMap[subFeatureName] ?? [];
-  }
-
   // Add a transformation for a specific sub-feature
   void addTransformationForSubFeature(
       String subFeatureName, Transformation transformation) {
     if (!transformationsMap.containsKey(subFeatureName)) {
       transformationsMap[subFeatureName] = [];
     }
-    transformationsMap[subFeatureName]!.add(transformation);
+    // Always add the transformation, allowing multiple of same type
+    transformationsMap[subFeatureName]!.add(transformation.clone());
+  }
+
+  // Update a transformation for a specific sub-feature
+  void updateTransformationForSubFeature(
+      String subFeatureName, Transformation transformation) {
+    if (!transformationsMap.containsKey(subFeatureName)) {
+      transformationsMap[subFeatureName] = [];
+    }
+    // Find and update the existing transformation by index
+    final existingIndex = transformationsMap[subFeatureName]!
+        .indexWhere((t) => t == transformation);
+    if (existingIndex != -1) {
+      transformationsMap[subFeatureName]![existingIndex] =
+          transformation.clone();
+    } else {
+      // If it doesn't exist, add it
+      transformationsMap[subFeatureName]!.add(transformation.clone());
+    }
   }
 
   // Remove a transformation for a specific sub-feature
