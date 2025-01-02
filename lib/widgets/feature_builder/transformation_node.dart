@@ -1,6 +1,5 @@
 // lib/widgets/feature_builder/transformation_node.dart
 import 'package:flutter/material.dart';
-import '../models/transformation.dart';
 
 class TransformationNode extends StatefulWidget {
   final String transformationName;

@@ -198,10 +198,12 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
     setState(() {});
   }
 
-  _FeatureNodeData _createNodeDataForFeature(Feature f, Offset pos) {
+  _FeatureNodeData _createNodeDataForFeature(Feature f, Offset pos,
+      {bool isFromPT = false}) {
     return _FeatureNodeData(
       position: pos,
       feature: f,
+      isFromPT: isFromPT,
     );
   }
 
@@ -260,6 +262,13 @@ class _FeatureBuilderWorkspaceState extends State<FeatureBuilderWorkspace> {
                   if (nodeIndex != -1) {
                     _featureNodes[nodeIndex].condition = data.condition;
                     _featureNodes[nodeIndex].isFromPT = true;
+                  } else {
+                    // If node wasn't found, add it with isFromPT = true
+                    _featureNodes.add(_createNodeDataForFeature(
+                      feature,
+                      Offset(50 + (_featureNodes.length * 250), 100),
+                      isFromPT: true,
+                    ));
                   }
                 });
               }

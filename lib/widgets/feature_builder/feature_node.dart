@@ -5,7 +5,6 @@ import '../models/transformation.dart';
 import '../models/condition.dart';
 import '../models/feature.dart';
 import 'transformation_node.dart';
-import 'condition_node.dart';
 
 class FeatureNode extends StatefulWidget {
   final String featureName;
@@ -58,10 +57,7 @@ class _FeatureNodeState extends State<FeatureNode> {
 
   final GlobalKey _cardKey = GlobalKey();
 
-  double _nodeHeight = 200;
   double _nodeWidth = 240;
-  double _featureWidth = 200;
-
   double extraSpacing = 40;
 
   @override
@@ -100,9 +96,7 @@ class _FeatureNodeState extends State<FeatureNode> {
       final RenderBox box =
           _cardKey.currentContext!.findRenderObject() as RenderBox;
       setState(() {
-        _nodeHeight = box.size.height;
         _nodeWidth = box.size.width;
-        _featureWidth = _nodeWidth - extraSpacing;
       });
     }
   }
@@ -117,10 +111,6 @@ class _FeatureNodeState extends State<FeatureNode> {
     final intValue = int.tryParse(value);
     widget.feature.setHowMany(subFeatureName, intValue);
     widget.onHowManyChanged(subFeatureName, intValue);
-  }
-
-  void _showCopyDialog(BuildContext context) {
-    widget.onCopyFeature(widget.feature);
   }
 
   @override
@@ -227,12 +217,12 @@ class _FeatureNodeState extends State<FeatureNode> {
                             ),
                           );
                         },
-                        onWillAccept: (data) =>
+                        onWillAcceptWithDetails: (details) =>
                             !widget.isFromPT && widget.condition == null,
-                        onAccept: (data) {
+                        onAcceptWithDetails: (details) {
                           if (!widget.isFromPT) {
                             setState(() {
-                              widget.onConditionAdd(data);
+                              widget.onConditionAdd(details.data);
                             });
                           }
                         },
@@ -386,12 +376,13 @@ class _FeatureNodeState extends State<FeatureNode> {
                                     ),
                                   );
                                 },
-                                onWillAccept: (data) => !widget.isFromPT,
-                                onAccept: (data) {
+                                onWillAcceptWithDetails: (details) =>
+                                    !widget.isFromPT,
+                                onAcceptWithDetails: (details) {
                                   if (!widget.isFromPT) {
                                     final newTransformation = Transformation(
-                                      data.name,
-                                      args: List.from(data.args),
+                                      details.data.name,
+                                      args: List.from(details.data.args),
                                     );
                                     widget.onTransformationAdd(
                                         subFeature.name, newTransformation);

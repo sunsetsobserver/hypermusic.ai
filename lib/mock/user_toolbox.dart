@@ -10,24 +10,24 @@ class UserToolbox {
   // Initialize toolbox with all items from MockDataStore
   static void initializeFromMockData() {
     // Add references to features
-    MockDataStore.features.keys.forEach((key) {
+    for (final key in MockDataStore.features.keys) {
       featureNames.add(key);
-    });
+    }
 
     // Add references to transformations
-    MockDataStore.transformations.keys.forEach((key) {
+    for (final key in MockDataStore.transformations.keys) {
       transformationNames.add(key);
-    });
+    }
 
     // Add references to conditions
-    MockDataStore.conditions.keys.forEach((key) {
+    for (final key in MockDataStore.conditions.keys) {
       conditionNames.add(key);
-    });
+    }
 
     // Add references to performative transactions
-    MockDataStore.performativeTransactions.keys.forEach((key) {
+    for (final key in MockDataStore.performativeTransactions.keys) {
       performativeTransactionNames.add(key);
-    });
+    }
   }
 
   // Methods to manage features

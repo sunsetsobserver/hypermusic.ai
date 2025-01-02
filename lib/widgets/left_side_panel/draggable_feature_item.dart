@@ -126,10 +126,8 @@ class DraggableFeatureItem extends StatelessWidget {
               switch (value) {
                 case 'copy':
                   await _showCopyDialog(context);
-                  break;
                 case 'remove':
                   onFeatureRemoved();
-                  break;
               }
             },
             itemBuilder: (context) => [

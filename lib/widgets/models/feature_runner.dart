@@ -1,4 +1,3 @@
-import 'dart:math' show min;
 import 'feature.dart';
 import 'transformation.dart';
 
