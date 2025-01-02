@@ -19,19 +19,20 @@ class FeatureCalculator {
 
     // Generate the sequence
     for (int opId = 0; opId < howMany; opId++) {
-      // Store the current value before transformations
+      // 1) Put current value into the space array
       space[opId] = x;
 
-      // Apply all transformations in sequence
+      // 2) If there are transformations, pick exactly one based on (opId mod transformations.length)
       if (transformations.isNotEmpty) {
-        for (final transformation in transformations) {
-          print(
-              "  Step $opId: Applying ${transformation.name}(${transformation.args}) to $x");
-          x = _executeTransformation(transformation, x);
-        }
+        final index = opId % transformations.length;
+        final transformation = transformations[index];
+        print(
+            "  Step $opId: Applying ${transformation.name}(${transformation.args}) to $x");
+        x = _executeTransformation(transformation, x);
       } else {
+        // No transformations => default increment
         print("  Step $opId: No transformation, incrementing $x by 1");
-        x = x + 1; // Default increment if no transformations
+        x = x + 1;
       }
     }
 
