@@ -10,7 +10,7 @@ class FeatureCalculator {
     print("  HowMany: $howMany");
 
     List<int> space = List<int>.filled(howMany, 0);
-    int x = start;
+    int currentValue = start;
 
     // Get transformations for this feature from the parent
     final transformations =
@@ -19,20 +19,21 @@ class FeatureCalculator {
 
     // Generate the sequence
     for (int opId = 0; opId < howMany; opId++) {
-      // 1) Put current value into the space array
-      space[opId] = x;
+      // Store the current value before transformation
+      space[opId] = currentValue;
+      print("  Step $opId: Starting with value $currentValue");
 
-      // 2) If there are transformations, pick exactly one based on (opId mod transformations.length)
+      // Apply exactly one transformation based on the current step
       if (transformations.isNotEmpty) {
-        final index = opId % transformations.length;
-        final transformation = transformations[index];
-        print(
-            "  Step $opId: Applying ${transformation.name}(${transformation.args}) to $x");
-        x = _executeTransformation(transformation, x);
+        // Pick the next transformation in sequence, cycling through the list
+        final transformationIndex = opId % transformations.length;
+        final transformation = transformations[transformationIndex];
+        print("    Applying ${transformation.name}(${transformation.args})");
+        currentValue = _executeTransformation(transformation, currentValue);
       } else {
         // No transformations => default increment
-        print("  Step $opId: No transformation, incrementing $x by 1");
-        x = x + 1;
+        currentValue = currentValue + 1;
+        print("    No transformations, incrementing to $currentValue");
       }
     }
 
@@ -41,10 +42,11 @@ class FeatureCalculator {
   }
 
   // Recursively decomposes a feature into its scalar components
-  void decompose(Feature feature, int dest, List<List<int>> outBuffer) {
+  void decompose(Feature parentFeature, Feature feature, int dest,
+      List<List<int>> outBuffer) {
     print("\nDecomposing feature: ${feature.name}");
     print("Destination index: $dest");
-    print("Transformations map: ${feature.transformationsMap}");
+    print("Parent's transformations map: ${parentFeature.transformationsMap}");
 
     if (dest >= outBuffer.length) {
       throw Exception('Buffer too small');
@@ -53,13 +55,13 @@ class FeatureCalculator {
     if (feature.isScalar) {
       print("${feature.name} is a scalar feature");
       // For scalar features, generate sequence using parent's settings
-      final start = feature.startingPoints[feature.name] ?? 0;
-      final howMany = feature.howManyValues[feature.name] ?? 1;
+      final start = parentFeature.startingPoints[feature.name] ?? 0;
+      final howMany = parentFeature.howManyValues[feature.name] ?? 1;
       print("Using settings - Start: $start, HowMany: $howMany");
 
       // Generate sequence directly for scalar features
       final sequence =
-          generateSubfeatureSpace(feature, feature, start, howMany);
+          generateSubfeatureSpace(parentFeature, feature, start, howMany);
       outBuffer[dest] = sequence;
       print("Saved sequence to buffer[$dest]: ${outBuffer[dest]}");
       return;
@@ -71,13 +73,14 @@ class FeatureCalculator {
     int currentDest = dest;
     for (final composite in feature.composites) {
       print("\nProcessing composite: ${composite.name}");
+      // Use the parent's settings for this composite
       final start = feature.startingPoints[composite.name] ?? 0;
       final howMany = feature.howManyValues[composite.name] ?? 1;
       print("Settings - Start: $start, HowMany: $howMany");
 
       if (composite.isScalar) {
         print("${composite.name} is scalar, generating sequence");
-        // Generate sequence for scalar composite using parent's transformations
+        // Generate sequence for scalar composite using feature's transformations
         final sequence =
             generateSubfeatureSpace(feature, composite, start, howMany);
         outBuffer[currentDest] = sequence;
@@ -86,18 +89,8 @@ class FeatureCalculator {
         currentDest++;
       } else {
         print("${composite.name} is composite, processing recursively");
-        // Create a new feature instance with the correct settings and transformations
-        final subFeature = Feature(
-          name: composite.name,
-          composites: composite.composites,
-          transformationsMap:
-              feature.transformationsMap, // Pass parent's transformations
-          startingPoints: Map.from(feature.startingPoints),
-          howManyValues: Map.from(feature.howManyValues),
-        );
-
-        // Recursively process composite
-        decompose(subFeature, currentDest, outBuffer);
+        // Recursively process composite, passing current feature as parent
+        decompose(feature, composite, currentDest, outBuffer);
         currentDest += composite.getScalarsCount();
       }
     }
@@ -132,8 +125,8 @@ class FeatureCalculator {
         List.generate(numberOfScalars, (_) => List<int>.filled(maxHowMany, 0));
     print("Allocated buffer: ${samplesBuffer.length}x$maxHowMany");
 
-    // Decompose the feature
-    decompose(feature, 0, samplesBuffer);
+    // Decompose the feature, passing feature as its own parent initially
+    decompose(feature, feature, 0, samplesBuffer);
 
     print("\nFinal results:");
     for (int i = 0; i < samplesBuffer.length; i++) {
