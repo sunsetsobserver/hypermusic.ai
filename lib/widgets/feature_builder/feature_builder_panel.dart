@@ -91,7 +91,7 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error building feature: $e'),
+          content: Text('Error building feature: ${e.toString()}'),
         ),
       );
     } finally {
@@ -108,29 +108,49 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(4.0),
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Feature Name',
-                    border: OutlineInputBorder(),
+                child: SizedBox(
+                  height: 28,
+                  child: TextField(
+                    controller: _nameController,
+                    style: const TextStyle(fontSize: 11),
+                    decoration: const InputDecoration(
+                      labelText: 'Feature Name',
+                      labelStyle: TextStyle(fontSize: 11),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(2)),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: _isBuilding ? null : _handleBuild,
-                child: _isBuilding
-                    ? const CircularProgressIndicator()
-                    : const Text('Build'),
+              const SizedBox(width: 4),
+              SizedBox(
+                height: 28,
+                child: ElevatedButton(
+                  onPressed: _isBuilding ? null : _handleBuild,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                  child: _isBuilding
+                      ? const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Build'),
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Expanded(
           child: widget.viewedFeature != null
               ? FeatureTreeEditor(
@@ -138,7 +158,10 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
                   onFeatureUpdate: widget.onFeatureStructureUpdated,
                 )
               : const Center(
-                  child: Text('No feature selected'),
+                  child: Text(
+                    'No feature selected',
+                    style: TextStyle(fontSize: 11),
+                  ),
                 ),
         ),
       ],

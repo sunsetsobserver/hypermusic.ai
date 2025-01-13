@@ -55,9 +55,18 @@ class FeatureNode extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!instance.feature.isScalar) ...[
-              Icon(
-                isExpanded ? Icons.expand_more : Icons.chevron_right,
-                size: 20,
+              IconButton(
+                iconSize: 10,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 14,
+                  minHeight: 14,
+                ),
+                icon: Icon(
+                  isExpanded ? Icons.expand_more : Icons.chevron_right,
+                  size: 10,
+                ),
+                onPressed: onToggleExpand,
               ),
               const SizedBox(width: 8),
             ],
@@ -66,38 +75,45 @@ class FeatureNode extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: Text(
-                          instance.feature.name,
-                          style: Theme.of(context).textTheme.titleSmall,
+                      Text(
+                        instance.feature.name,
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      if (onRemove != null) ...[
+                        const SizedBox(width: 4),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: onRemove,
+                            child: Icon(
+                              Icons.close,
+                              size: 10,
+                              color: Colors.grey.withOpacity(0.7),
+                            ),
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 16),
-                        onPressed: onRemove,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        visualDensity: VisualDensity.compact,
-                      ),
+                      ],
                     ],
                   ),
                   if (isExpanded) ...[
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Text('Start: ', style: TextStyle(fontSize: 12)),
+                        const Text('Start: ', style: TextStyle(fontSize: 9)),
                         SizedBox(
-                          width: 50,
+                          width: 40,
                           child: TextFormField(
                             initialValue: instance.startPoint.toString(),
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 9),
                             decoration: const InputDecoration(
                               isDense: true,
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 4,
-                                vertical: 8,
+                                vertical: 6,
                               ),
                             ),
                             onChanged: (value) {
@@ -107,18 +123,18 @@ class FeatureNode extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text('N: ', style: TextStyle(fontSize: 12)),
+                        const Text('N: ', style: TextStyle(fontSize: 9)),
                         SizedBox(
-                          width: 50,
+                          width: 40,
                           child: TextFormField(
                             initialValue: instance.howManyValues.toString(),
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 9),
                             decoration: const InputDecoration(
                               isDense: true,
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 4,
-                                vertical: 8,
+                                vertical: 6,
                               ),
                             ),
                             onChanged: (value) {

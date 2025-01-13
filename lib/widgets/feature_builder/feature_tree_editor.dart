@@ -192,97 +192,169 @@ class _FeatureTreeEditorState extends State<FeatureTreeEditor> {
       builder: (context, candidateData, rejectedData) {
         final isHovering = candidateData.isNotEmpty;
         return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.all(8),
+          margin: const EdgeInsets.symmetric(vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
           decoration: BoxDecoration(
             border: Border.all(
               color: isHovering
                   ? Theme.of(context).primaryColor
-                  : Colors.grey.withOpacity(0.3),
-              width: isHovering ? 2 : 1,
+                  : Colors.grey.withOpacity(0.2),
+              width: isHovering ? 1 : 0.5,
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(2),
             color: isHovering
                 ? Theme.of(context).primaryColor.withOpacity(0.1)
                 : Colors.transparent,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Transformations for ${subfeature.name}:',
-                style:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Text(
+                    '${subfeature.name}:',
+                    style: const TextStyle(
+                        fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
               if (transformations.isEmpty)
                 const Text(
                   'Drop transformations here',
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 8,
                       color: Colors.grey,
                       fontStyle: FontStyle.italic),
                 )
               else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (var i = 0; i < transformations.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Text(
-                              transformations[i]['name'] as String? ?? '',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 60,
-                              height: 24,
-                              child: TextFormField(
-                                initialValue: (transformations[i]['args']
-                                                as List?)
-                                            ?.isNotEmpty ==
-                                        true
-                                    ? transformations[i]['args'][0].toString()
-                                    : '0',
-                                style: const TextStyle(fontSize: 12),
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  border: OutlineInputBorder(),
-                                ),
-                                onChanged: (value) =>
-                                    _handleTransformationArgumentChange(
-                                  parentFeature,
-                                  subfeature.name,
-                                  i,
-                                  value,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: GestureDetector(
-                                onTap: () => _handleTransformationRemove(
-                                  parentFeature,
-                                  subfeature.name,
-                                  i,
-                                ),
-                                child: Icon(
-                                  Icons.close,
-                                  size: 16,
-                                  color: Colors.grey.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
+                StatefulBuilder(
+                  builder: (context, setState) {
+                    final scrollController = ScrollController();
+
+                    void scrollLeft() {
+                      if (scrollController.position.pixels > 0) {
+                        scrollController.animateTo(
+                          scrollController.position.pixels - 100,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    }
+
+                    void scrollRight() {
+                      if (scrollController.position.pixels <
+                          scrollController.position.maxScrollExtent) {
+                        scrollController.animateTo(
+                          scrollController.position.pixels + 100,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    }
+
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          iconSize: 12,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: scrollLeft,
                         ),
-                      ),
-                  ],
+                        Flexible(
+                          child: SingleChildScrollView(
+                            controller: scrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (var i = 0; i < transformations.length; i++)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 2),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          transformations[i]['name']
+                                                  as String? ??
+                                              '',
+                                          style: const TextStyle(fontSize: 9),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        SizedBox(
+                                          width: 32,
+                                          height: 16,
+                                          child: TextFormField(
+                                            initialValue: (transformations[i]
+                                                            ['args'] as List?)
+                                                        ?.isNotEmpty ==
+                                                    true
+                                                ? transformations[i]['args'][0]
+                                                    .toString()
+                                                : '0',
+                                            style: const TextStyle(fontSize: 9),
+                                            decoration: const InputDecoration(
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                      horizontal: 2,
+                                                      vertical: 1),
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.all(
+                                                    Radius.circular(2)),
+                                              ),
+                                            ),
+                                            onChanged: (value) =>
+                                                _handleTransformationArgumentChange(
+                                              parentFeature,
+                                              subfeature.name,
+                                              i,
+                                              value,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        MouseRegion(
+                                          cursor: SystemMouseCursors.click,
+                                          child: GestureDetector(
+                                            onTap: () =>
+                                                _handleTransformationRemove(
+                                              parentFeature,
+                                              subfeature.name,
+                                              i,
+                                            ),
+                                            child: Icon(
+                                              Icons.close,
+                                              size: 12,
+                                              color:
+                                                  Colors.grey.withOpacity(0.7),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          iconSize: 12,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: scrollRight,
+                        ),
+                      ],
+                    );
+                  },
                 ),
             ],
           ),
@@ -330,6 +402,7 @@ class _FeatureTreeEditorState extends State<FeatureTreeEditor> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Stack(
           children: [
@@ -345,56 +418,41 @@ class _FeatureTreeEditorState extends State<FeatureTreeEditor> {
                   decoration: BoxDecoration(
                     border: isDropTarget && isComposite
                         ? Border.all(
-                            color: Theme.of(context).primaryColor, width: 2)
+                            color: Theme.of(context).primaryColor, width: 1)
                         : null,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(2),
                     color: isComposite ? Colors.grey.withOpacity(0.05) : null,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FeatureNode(
-                              instance: RunningInstance(
-                                id: featurePath,
-                                feature: feature,
-                                startPoint: 0,
-                                howManyValues: 10,
-                                transformationStartIndex: 0,
-                                transformationEndIndex: 10,
-                              ),
-                              onUpdate: (updatedInstance) {
-                                _updateFeatureInTree(
-                                    feature, updatedInstance.feature);
-                              },
-                              onRemove: isRoot
-                                  ? null
-                                  : () {
-                                      final parent = _findParentFeature(
-                                          widget.rootFeature, feature);
-                                      if (parent != null) {
-                                        _removeFeature(parent, feature);
-                                      }
-                                    },
-                              isExpanded: isExpanded,
-                              onToggleExpand: hasComposites
-                                  ? () => _toggleExpanded(featurePath)
-                                  : () {},
-                            ),
+                      Expanded(
+                        child: FeatureNode(
+                          instance: RunningInstance(
+                            id: featurePath,
+                            feature: feature,
+                            startPoint: 0,
+                            howManyValues: 10,
+                            transformationStartIndex: 0,
+                            transformationEndIndex: 10,
                           ),
-                          if (isComposite && !isRoot) ...[
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: Icon(
-                                Icons.folder_outlined,
-                                size: 16,
-                                color: Colors.grey.withOpacity(0.5),
-                              ),
-                            ),
-                          ],
-                        ],
+                          onUpdate: (updatedInstance) {
+                            _updateFeatureInTree(
+                                feature, updatedInstance.feature);
+                          },
+                          onRemove: isRoot
+                              ? null
+                              : () {
+                                  final parent = _findParentFeature(
+                                      widget.rootFeature, feature);
+                                  if (parent != null) {
+                                    _removeFeature(parent, feature);
+                                  }
+                                },
+                          isExpanded: isExpanded,
+                          onToggleExpand: hasComposites
+                              ? () => _toggleExpanded(featurePath)
+                              : () {},
+                        ),
                       ),
                     ],
                   ),
@@ -405,15 +463,17 @@ class _FeatureTreeEditorState extends State<FeatureTreeEditor> {
         ),
         if (isExpanded && hasComposites)
           Padding(
-            padding: const EdgeInsets.only(left: 24),
+            padding: const EdgeInsets.only(left: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 if (hasComposites) ...[
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: 2),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         for (final composite in feature.composites)
                           _buildTransformationsList(feature, composite),
@@ -434,7 +494,7 @@ class _FeatureTreeEditorState extends State<FeatureTreeEditor> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(4.0),
         child: _buildFeatureNode(widget.rootFeature, [], isRoot: true),
       ),
     );

@@ -28,7 +28,7 @@ class LeftSidePanelState extends State<LeftSidePanel> {
   Widget build(BuildContext context) {
     return Container(
       width: 300,
-      color: Colors.grey[100],
+      color: Colors.grey[50],
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,11 +36,11 @@ class LeftSidePanelState extends State<LeftSidePanel> {
             FeatureListPanel(
               registry: widget.registry,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             TransformationListPanel(
               dataInterface: widget.dataInterface,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             ConditionListPanel(
               dataInterface: widget.dataInterface,
             ),

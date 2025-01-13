@@ -13,41 +13,62 @@ class DraggableConditionItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Draggable<Condition>(
       data: condition,
-      feedback: _buildDragFeedback(context),
-      childWhenDragging: Opacity(
-        opacity: 0.5,
-        child: _buildItem(context),
+      feedback: Material(
+        elevation: 4.0,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(2.0),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.rule, size: 14, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text(
+                condition.name,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ],
+          ),
+        ),
       ),
-      child: _buildItem(context),
-    );
-  }
-
-  Widget _buildItem(BuildContext context) {
-    // Displays an icon and the condition's name.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          const Icon(Icons.lock, size: 20),
-          const SizedBox(width: 8),
-          Text(condition.name),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDragFeedback(BuildContext context) {
-    // A highlighted version while dragging the condition.
-    return Material(
-      child: Container(
-        padding: const EdgeInsets.all(8.0),
-        color: Colors.orange[100],
+      childWhenDragging: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(2.0),
+        ),
         child: Row(
           children: [
-            const Icon(Icons.lock, size: 20),
-            const SizedBox(width: 8),
-            Text(condition.name,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Icon(Icons.rule, size: 14, color: Colors.grey[400]),
+            const SizedBox(width: 4),
+            Text(
+              condition.name,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(2.0),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.rule, size: 14, color: Colors.grey[600]),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                condition.name,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ),
+            Icon(Icons.drag_indicator, size: 14, color: Colors.grey[400]),
           ],
         ),
       ),

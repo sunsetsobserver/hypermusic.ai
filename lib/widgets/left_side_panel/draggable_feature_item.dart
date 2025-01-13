@@ -17,57 +17,59 @@ class DraggableFeatureItem extends StatelessWidget {
       feedback: Material(
         elevation: 4.0,
         child: Container(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(4.0),
+            borderRadius: BorderRadius.circular(2.0),
           ),
-          child: Text(
-            feature.name,
-            style: Theme.of(context).textTheme.bodyMedium,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.show_chart, size: 14, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text(
+                '${feature.name} (${feature.isScalar ? "scalar" : "compound"})',
+                style: const TextStyle(fontSize: 11),
+              ),
+            ],
           ),
         ),
       ),
       childWhenDragging: Container(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
         decoration: BoxDecoration(
           color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(4.0),
+          borderRadius: BorderRadius.circular(2.0),
         ),
-        child: Text(
-          feature.name,
-          style: Theme.of(context).textTheme.bodyMedium,
+        child: Row(
+          children: [
+            Icon(Icons.show_chart, size: 14, color: Colors.grey[400]),
+            const SizedBox(width: 4),
+            Text(
+              '${feature.name} (${feature.isScalar ? "scalar" : "compound"})',
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(4.0),
+          borderRadius: BorderRadius.circular(2.0),
           border: Border.all(color: Colors.grey[300]!),
         ),
         child: Row(
           children: [
+            Icon(Icons.show_chart, size: 14, color: Colors.grey[600]),
+            const SizedBox(width: 4),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    feature.name,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  if (feature.description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      feature.description,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
+              child: Text(
+                '${feature.name} (${feature.isScalar ? "scalar" : "compound"})',
+                style: const TextStyle(fontSize: 11),
               ),
             ),
-            const Icon(Icons.drag_indicator),
+            Icon(Icons.drag_indicator, size: 14, color: Colors.grey[400]),
           ],
         ),
       ),

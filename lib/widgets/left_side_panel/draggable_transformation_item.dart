@@ -1,10 +1,9 @@
 // draggable_transformation_item.dart defines a widget to render a Transformation as a draggable item.
 
-import 'package:flutter/material.dart'; //Base flutter library for widgets.
-import '../../models/transformation.dart'; //Importing the Transformation model.
+import 'package:flutter/material.dart';
+import '../../models/transformation.dart';
 
 class DraggableTransformationItem extends StatelessWidget {
-  // transformation: The Transformation object represented by this widget.
   final Transformation transformation;
 
   const DraggableTransformationItem({super.key, required this.transformation});
@@ -23,31 +22,48 @@ class DraggableTransformationItem extends StatelessWidget {
   }
 
   Widget _buildItem(BuildContext context) {
-    // Display the transformation name with an icon.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(2.0),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.build, size: 20),
-          const SizedBox(width: 8),
-          Text(transformation.name),
+          Icon(Icons.build, size: 14, color: Colors.grey[600]),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              transformation.name,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ),
+          Icon(Icons.drag_indicator, size: 14, color: Colors.grey[400]),
         ],
       ),
     );
   }
 
   Widget _buildDragFeedback(BuildContext context) {
-    // A highlighted version of the transformation item when dragged.
     return Material(
+      elevation: 4.0,
+      borderRadius: BorderRadius.circular(2.0),
       child: Container(
-        padding: const EdgeInsets.all(8.0),
-        color: Colors.green[100],
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(2.0),
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.build, size: 20),
-            const SizedBox(width: 8),
-            Text(transformation.name,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Icon(Icons.build, size: 14, color: Colors.grey[600]),
+            const SizedBox(width: 4),
+            Text(
+              transformation.name,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),

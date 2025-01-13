@@ -19,10 +19,9 @@ class EditPage extends StatefulWidget {
 }
 
 class _EditPageState extends State<EditPage> {
+  final GlobalKey<LeftSidePanelState> leftSidePanelKey = GlobalKey();
   Feature? _viewedFeature;
   Feature? _rootFeature;
-  final GlobalKey<LeftSidePanelState> leftSidePanelKey =
-      GlobalKey<LeftSidePanelState>();
 
   @override
   void initState() {
@@ -63,25 +62,46 @@ class _EditPageState extends State<EditPage> {
     return Scaffold(
       appBar: TopNavBar(showPagesLinks: true),
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 300,
+            width: 200,
             child: LeftSidePanel(
-              key: leftSidePanelKey,
               dataInterface: widget.dataInterface,
               registry: widget.dataInterface as Registry,
+              key: leftSidePanelKey,
             ),
           ),
-          const VerticalDivider(width: 1),
-          Expanded(
+          Container(
+            width: 300,
+            decoration: BoxDecoration(
+              border: Border.symmetric(
+                vertical: BorderSide(
+                  color: Colors.grey.withOpacity(0.2),
+                ),
+              ),
+            ),
             child: FeatureBuilderPanel(
               dataInterface: widget.dataInterface,
               onFeatureStructureUpdated: _handleFeatureStructureUpdated,
               onFeatureCompiled: () {
-                // Refresh the left panel when a feature is compiled
                 leftSidePanelKey.currentState?.refreshFeatures();
               },
               viewedFeature: _viewedFeature,
+            ),
+          ),
+          Expanded(
+            child: Container(
+              color: Colors.grey.withOpacity(0.05),
+              child: const Center(
+                child: Text(
+                  'Placeholder for future content',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
