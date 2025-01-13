@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import '../../models/running_instance.dart';
-import '../../models/feature.dart';
 
 class FeatureNode extends StatelessWidget {
   final RunningInstance instance;
@@ -19,19 +18,6 @@ class FeatureNode extends StatelessWidget {
     required this.isExpanded,
     required this.onToggleExpand,
   });
-
-  void _updateFeature(Feature updatedFeature) {
-    onUpdate(
-      RunningInstance(
-        id: instance.id,
-        feature: updatedFeature,
-        startPoint: instance.startPoint,
-        howManyValues: instance.howManyValues,
-        transformationStartIndex: instance.transformationStartIndex,
-        transformationEndIndex: instance.transformationEndIndex,
-      ),
-    );
-  }
 
   void _updateStartPoint(int newStartPoint) {
     onUpdate(

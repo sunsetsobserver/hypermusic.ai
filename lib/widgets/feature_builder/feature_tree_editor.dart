@@ -28,7 +28,6 @@ class FeatureTreeEditor extends StatefulWidget {
 class FeatureTreeEditorState extends State<FeatureTreeEditor> {
   final Map<String, bool> _expandedNodes = {};
   Feature? _dropTargetFeature;
-  String? _selectedSubfeatureForTransformation;
 
   String _getFeaturePath(Feature feature, List<String> parentPath) {
     final currentPath = [...parentPath, feature.name];
