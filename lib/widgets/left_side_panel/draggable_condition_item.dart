@@ -1,7 +1,7 @@
 // draggable_condition_item.dart defines a widget for rendering a Condition as a draggable item.
 
 import 'package:flutter/material.dart'; //For Flutter UI.
-import '../models/condition.dart'; //Importing the Condition model.
+import '../../models/condition.dart'; //Importing the Condition model.
 
 class DraggableConditionItem extends StatelessWidget {
   // condition: The Condition object to display.

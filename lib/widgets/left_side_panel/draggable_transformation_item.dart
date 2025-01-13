@@ -1,7 +1,7 @@
 // draggable_transformation_item.dart defines a widget to render a Transformation as a draggable item.
 
 import 'package:flutter/material.dart'; //Base flutter library for widgets.
-import '../models/transformation.dart'; //Importing the Transformation model.
+import '../../models/transformation.dart'; //Importing the Transformation model.
 
 class DraggableTransformationItem extends StatelessWidget {
   // transformation: The Transformation object represented by this widget.

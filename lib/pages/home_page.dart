@@ -6,8 +6,16 @@ import '../widgets/typewriter_text.dart'; //typewriterText widget which displays
 
 import '../widgets/feature_fetcher_button.dart'; //For the button-based fetcher (now simplified to just a button, no Scaffold)
 import '../widgets/feature_fetcher_page.dart'; //For the page-based fetcher (a separate route)
+import '../registry/registry.dart';
+import '../registry/registry_initializer.dart';
 
 class HomePage extends StatelessWidget {
+  final Registry registry = Registry();
+
+  HomePage() {
+    RegistryInitializer.initialize(registry);
+  }
+
   final List<String> typewriterTexts = [
     //contains the phrases that TypewriterText will cycle through.
     //These strings describe the vision or theme of the app:
@@ -87,10 +95,10 @@ class HomePage extends StatelessWidget {
                 child: Text("Enter", style: TextStyle(color: Colors.white)),
               ),
               SizedBox(height: 50),
-              //after the button adds some breathing room at the bottom of the column’s content
+              //after the button adds some breathing room at the bottom of the column's content
 
-              // Insert the feature fetcher button here - now just a single button, not a Scaffold
-              // This button will fetch features (mock data) when clicked and print them to the console.
+              // Insert the feature fetcher button here
+              // This button will fetch features from the Registry when clicked
               FeatureFetcherButton(),
               const SizedBox(height: 20),
 
@@ -101,7 +109,8 @@ class HomePage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => FeatureFetcherPage()),
+                        builder: (context) =>
+                            FeatureFetcherPage(dataInterface: registry)),
                   );
                 },
                 child: Text("View Features Page"),

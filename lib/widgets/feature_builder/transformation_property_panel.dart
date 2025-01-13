@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/transformation.dart';
+import '../../models/transformation.dart';
 
 class TransformationPropertyPanel extends StatefulWidget {
   final Transformation transformation;

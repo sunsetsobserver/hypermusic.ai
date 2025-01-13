@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
-import '../interfaces/data_interface.dart';
-import '../mock/mock_api.dart';
+import '../registry/registry.dart';
+import 'feature_fetcher_page.dart';
 
 class FeatureFetcherButton extends StatelessWidget {
-  final DataInterface api = MockAPI(); // Use MockAPI for development
+  final Registry registry = Registry();
 
-  void fetchFeatures() async {
-    final features = await api.getAllFeatures();
-    print("Features: $features");
-  }
+  FeatureFetcherButton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Just return a button here, no Scaffold needed
-    return ElevatedButton(
-      onPressed: fetchFeatures,
-      child: Text('Fetch Features'),
+    return IconButton(
+      icon: const Icon(Icons.folder_open),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FeatureFetcherPage(dataInterface: registry),
+          ),
+        );
+      },
     );
   }
 }

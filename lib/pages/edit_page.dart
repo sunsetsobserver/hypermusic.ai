@@ -1,22 +1,62 @@
 import 'package:flutter/material.dart';
-import '../top_nav_bar.dart';
+import '../interfaces/data_interface.dart';
+import '../models/feature.dart';
+import '../registry/registry.dart';
 import '../widgets/left_side_panel/left_side_panel.dart';
 import '../widgets/feature_builder/feature_builder_panel.dart';
-import '../../mock/mock_api.dart';
-import '../../interfaces/data_interface.dart';
+import '../top_nav_bar.dart';
 
 class EditPage extends StatefulWidget {
-  const EditPage({super.key});
+  final DataInterface dataInterface;
+
+  const EditPage({
+    super.key,
+    required this.dataInterface,
+  });
 
   @override
   State<EditPage> createState() => _EditPageState();
 }
 
 class _EditPageState extends State<EditPage> {
-  final DataInterface dataInterface = MockAPI();
-  // A global key to access the LeftSidePanel state.
+  Feature? _viewedFeature;
+  Feature? _rootFeature;
   final GlobalKey<LeftSidePanelState> leftSidePanelKey =
       GlobalKey<LeftSidePanelState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with an empty root feature
+    _rootFeature = Feature(
+      name: "New Feature",
+      description: "Default description",
+      composites: [],
+      transformationsMap: {},
+    );
+    _viewedFeature = _rootFeature;
+  }
+
+  void _handleFeatureStructureUpdated(Feature feature) {
+    setState(() {
+      _rootFeature = feature;
+      if (_viewedFeature == null ||
+          !_featureExistsInTree(_rootFeature!, _viewedFeature)) {
+        _viewedFeature = _rootFeature;
+      }
+      // Refresh the left panel when feature structure changes
+      leftSidePanelKey.currentState?.refreshFeatures();
+    });
+  }
+
+  bool _featureExistsInTree(Feature root, Feature? candidate) {
+    if (candidate == null) return false;
+    if (candidate == root) return true;
+    for (var c in root.composites) {
+      if (_featureExistsInTree(c, candidate)) return true;
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,20 +66,22 @@ class _EditPageState extends State<EditPage> {
         children: [
           SizedBox(
             width: 300,
-            // Pass the key to LeftSidePanel to later call refreshFeatures
             child: LeftSidePanel(
               key: leftSidePanelKey,
-              dataInterface: dataInterface,
+              dataInterface: widget.dataInterface,
+              registry: widget.dataInterface as Registry,
             ),
           ),
+          const VerticalDivider(width: 1),
           Expanded(
-            // Pass a callback to FeatureBuilderPanel that calls refreshFeatures on the left panel
             child: FeatureBuilderPanel(
-              dataInterface: dataInterface,
+              dataInterface: widget.dataInterface,
+              onFeatureStructureUpdated: _handleFeatureStructureUpdated,
               onFeatureCompiled: () {
-                // When a feature is compiled, refresh the left side panel
+                // Refresh the left panel when a feature is compiled
                 leftSidePanelKey.currentState?.refreshFeatures();
               },
+              viewedFeature: _viewedFeature,
             ),
           ),
         ],

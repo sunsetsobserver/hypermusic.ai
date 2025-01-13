@@ -1,44 +1,38 @@
-import 'package:flutter/material.dart'; //flutter’s Material Design widgets and theme
+import 'package:flutter/material.dart';
 import '../interfaces/data_interface.dart';
-import '../mock/mock_api.dart';
 
-class FeatureFetcherPage extends StatefulWidget {
-  @override
-  FeatureFetcherPageState createState() => FeatureFetcherPageState();
-}
+class FeatureFetcherPage extends StatelessWidget {
+  final DataInterface dataInterface;
 
-class FeatureFetcherPageState extends State<FeatureFetcherPage> {
-  final DataInterface api = MockAPI(); // Use MockAPI for development
-  List<String> features = [];
-
-  @override
-  void initState() {
-    super.initState();
-    fetchFeatures(); // Fetch features when the widget is initialized
-  }
-
-  void fetchFeatures() async {
-    final fetchedFeatures = await api.getAllFeatures();
-    setState(() {
-      features = fetchedFeatures;
-    });
-  }
+  const FeatureFetcherPage({super.key, required this.dataInterface});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Features')),
+      appBar: AppBar(
+        title: const Text('Feature Fetcher'),
+      ),
       body: Center(
-        child: features.isEmpty
-            ? CircularProgressIndicator() // Show a loading spinner
-            : ListView.builder(
+        child: FutureBuilder<List<String>>(
+          future: dataInterface.getAllFeatures(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else {
+              final features = snapshot.data ?? [];
+              return ListView.builder(
                 itemCount: features.length,
                 itemBuilder: (context, index) {
                   return ListTile(
                     title: Text(features[index]),
                   );
                 },
-              ),
+              );
+            }
+          },
+        ),
       ),
     );
   }

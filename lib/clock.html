@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Clock 02:03</title>
+  <style>
+    /* Clock container */
+    .clock {
+      width: 200px;
+      height: 200px;
+      border: 8px solid #333;   /* Outer border */
+      border-radius: 50%;       /* Make the container circular */
+      margin: 50px auto;
+      position: relative;       /* Position children absolutely */
+      background: #fff;         /* Clock face background */
+    }
+
+    /* Center pivot */
+    .center {
+      width: 12px;
+      height: 12px;
+      background: #333;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+
+    /* Common hand styles */
+    .hand {
+      position: absolute;
+      width: 50%;
+      height: 6px;
+      background: #333;
+      top: 50%;
+      left: 50%;
+      transform-origin: 100%;   /* Rotate around the end of the hand */
+      transform: rotate(0deg);
+      border-radius: 6px;       /* Rounded edges for the hands */
+      transition: all 0.5s ease; 
+    }
+
+    /* Hour hand (02:03 → about 61.5 degrees) */
+    .hour {
+      width: 30%;               /* Hour hand is shorter */
+      transform: rotate(61.5deg);
+    }
+
+    /* Minute hand (3 minutes → 18 degrees) */
+    .minute {
+      width: 45%;               /* Minute hand is a bit longer */
+      transform: rotate(18deg);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="clock">
+    <!-- Hour hand -->
+    <div class="hand hour"></div>
+    <!-- Minute hand -->
+    <div class="hand minute"></div>
+    <!-- Center pivot -->
+    <div class="center"></div>
+  </div>
+</body>
+</html>

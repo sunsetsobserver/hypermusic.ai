@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 class TransformationNode extends StatefulWidget {
   final String transformationName;
-  final List<dynamic> args;
-  final void Function(List<dynamic>)? onArgsChanged;
+  final List<int> args;
+  final void Function(List<int>)? onArgsChanged;
 
   const TransformationNode({
     super.key,
@@ -52,51 +52,54 @@ class _TransformationNodeState extends State<TransformationNode> {
       case "Nop":
         return "No operation (pass through)";
       default:
-        return widget.transformationName;
+        return "Unknown transformation";
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
+    return Container(
+      padding: const EdgeInsets.all(8),
       child: Row(
         children: [
-          const Icon(Icons.settings, size: 16),
-          const SizedBox(width: 4),
           Expanded(
-            child: Text(
-              _getTransformationDescription(),
-              style: TextStyle(
-                fontSize: 12,
-                color:
-                    widget.onArgsChanged == null ? Colors.grey : Colors.black,
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.transformationName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _getTransformationDescription(),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          if (widget.onArgsChanged != null)
+          if (widget.onArgsChanged != null &&
+              widget.transformationName != "Nop") ...[
+            const SizedBox(width: 8),
             SizedBox(
-              width: 50,
-              height: 24,
+              width: 60,
               child: TextField(
                 controller: _argController,
                 decoration: const InputDecoration(
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  labelText: 'Arg',
                   border: OutlineInputBorder(),
-                  isDense: true,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 ),
-                enabled: widget.onArgsChanged != null,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 12),
                 onChanged: (value) {
-                  final intValue = int.tryParse(value) ?? 0;
-                  widget.onArgsChanged?.call([intValue]);
+                  final intValue = int.tryParse(value);
+                  if (intValue != null) {
+                    widget.onArgsChanged!([intValue]);
+                  }
                 },
               ),
             ),
+          ],
         ],
       ),
     );
