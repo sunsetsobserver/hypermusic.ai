@@ -4,11 +4,9 @@ import '../models/feature.dart';
 import '../models/running_instance.dart';
 
 abstract class DataInterface {
-  Future<void> registerFeature(
-    String name,
-    List<String> composites,
-    List<Map<String, dynamic>> transformations,
-  );
+  Future<void> registerFeature(String name, List<String> composites,
+      List<Map<String, dynamic>> transformations,
+      {List<RunningInstance>? runningInstances});
 
   void addRunningInstance(RunningInstance instance);
   void removeRunningInstance(RunningInstance instance);

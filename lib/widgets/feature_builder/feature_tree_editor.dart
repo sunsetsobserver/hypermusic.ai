@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/feature.dart';
 import '../../models/running_instance.dart';
 import '../../models/transformation.dart';
+import '../../interfaces/data_interface.dart';
 import 'feature_node.dart';
 
 class FeatureTreeEditor extends StatefulWidget {
@@ -9,20 +10,22 @@ class FeatureTreeEditor extends StatefulWidget {
   final RunningInstance? runningInstance;
   final Function(Feature) onFeatureUpdate;
   final Function(RunningInstance)? onRunningInstanceUpdate;
+  final DataInterface dataInterface;
 
   const FeatureTreeEditor({
     super.key,
     required this.rootFeature,
     required this.onFeatureUpdate,
+    required this.dataInterface,
     this.runningInstance,
     this.onRunningInstanceUpdate,
   });
 
   @override
-  State<FeatureTreeEditor> createState() => _FeatureTreeEditorState();
+  State<FeatureTreeEditor> createState() => FeatureTreeEditorState();
 }
 
-class _FeatureTreeEditorState extends State<FeatureTreeEditor> {
+class FeatureTreeEditorState extends State<FeatureTreeEditor> {
   final Map<String, bool> _expandedNodes = {};
   Feature? _dropTargetFeature;
   String? _selectedSubfeatureForTransformation;
@@ -488,6 +491,37 @@ class _FeatureTreeEditorState extends State<FeatureTreeEditor> {
           ),
       ],
     );
+  }
+
+  List<RunningInstance> collectRunningInstances(
+      Feature feature, List<String> parentPath) {
+    final instances = <RunningInstance>[];
+    final featurePath = _getFeaturePath(feature, parentPath);
+
+    // Get original feature name (remove timestamp)
+    final originalName = feature.name.split('_').first;
+    final originalFeature = widget.dataInterface.getFeature(originalName);
+
+    if (originalFeature != null && feature.name != originalName) {
+      // This is a modified copy, create running instance using the modified feature
+      instances.add(
+        RunningInstance(
+          id: feature.name, // Use timestamped name as ID
+          feature: feature, // Use modified feature instead of original
+          startPoint: 0,
+          howManyValues: 10,
+          transformationStartIndex: 0,
+          transformationEndIndex: 10,
+        ),
+      );
+    }
+
+    // Recursively collect from composites
+    for (final composite in feature.composites) {
+      instances.addAll(collectRunningInstances(composite, [featurePath]));
+    }
+
+    return instances;
   }
 
   @override

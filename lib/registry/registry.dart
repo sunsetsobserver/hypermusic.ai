@@ -52,17 +52,28 @@ class Registry implements DataInterface {
   }
 
   @override
-  Future<void> registerFeature(
-    String name,
-    List<String> composites,
-    List<Map<String, dynamic>> transformations,
-  ) async {
+  Future<void> registerFeature(String name, List<String> composites,
+      List<Map<String, dynamic>> transformations,
+      {List<RunningInstance>? runningInstances}) async {
+    if (runningInstances != null) {
+      for (final instance in runningInstances) {
+        addRunningInstance(instance);
+      }
+    }
+
     final feature = Feature(
       name: name,
       description: "Generated feature",
-      composites: composites.map((c) => _features[c]!).toList(),
+      composites: composites.map((c) {
+        final runningInstance = runningInstances?.firstWhere(
+          (ri) => ri.id.split('_').first == c,
+          orElse: () => throw UnimplementedError(),
+        );
+        return runningInstance?.feature ?? _features[c]!;
+      }).toList(),
       transformationsMap: _groupTransformationsBySubFeature(transformations),
     );
+
     _features[name] = feature;
   }
 

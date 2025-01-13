@@ -24,6 +24,8 @@ class FeatureBuilderPanel extends StatefulWidget {
 class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
   final TextEditingController _nameController = TextEditingController();
   bool _isBuilding = false;
+  final GlobalKey<FeatureTreeEditorState> _treeEditorKey =
+      GlobalKey<FeatureTreeEditorState>();
 
   @override
   void initState() {
@@ -66,18 +68,28 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
 
       final rootFeature = widget.viewedFeature!;
 
+      // Get all running instances from the tree
+      final runningInstances = _treeEditorKey.currentState
+              ?.collectRunningInstances(rootFeature, []) ??
+          [];
+
+      // Register the feature with its running instances
       await widget.dataInterface.registerFeature(
         _nameController.text,
-        rootFeature.composites.map((f) => f.name).toList(),
+        rootFeature.composites
+            .map((f) => f.name.split('_').first)
+            .toList(), // Use original names
         rootFeature.transformationsMap.entries.expand((entry) {
           return entry.value.map((t) => {
                 'subFeatureName': entry.key,
                 ...t,
               });
         }).toList(),
+        runningInstances: runningInstances, // Pass running instances
       );
 
       widget.onFeatureStructureUpdated(rootFeature);
+      widget.onFeatureCompiled();
 
       if (!mounted) return;
 
@@ -88,7 +100,6 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
       );
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error building feature: ${e.toString()}'),
@@ -154,8 +165,10 @@ class _FeatureBuilderPanelState extends State<FeatureBuilderPanel> {
         Expanded(
           child: widget.viewedFeature != null
               ? FeatureTreeEditor(
+                  key: _treeEditorKey,
                   rootFeature: widget.viewedFeature!,
                   onFeatureUpdate: widget.onFeatureStructureUpdated,
+                  dataInterface: widget.dataInterface,
                 )
               : const Center(
                   child: Text(
