@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../interfaces/data_interface.dart';
 import '../models/feature.dart';
 import '../registry/registry.dart';
+import '../registry/registry_initializer.dart';
 import '../widgets/left_side_panel/left_side_panel.dart';
 import '../widgets/feature_builder/feature_builder_panel.dart';
 import '../top_nav_bar.dart';
@@ -26,13 +27,8 @@ class _EditPageState extends State<EditPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize with an empty root feature
-    _rootFeature = Feature(
-      name: "New Feature",
-      description: "Default description",
-      composites: [],
-      transformationsMap: {},
-    );
+    // Initialize with the root feature template
+    _rootFeature = RegistryInitializer.getRootFeatureTemplate();
     _viewedFeature = _rootFeature;
   }
 

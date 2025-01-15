@@ -27,11 +27,11 @@ class FeatureTreeEditor extends StatefulWidget {
 
 class FeatureTreeEditorState extends State<FeatureTreeEditor> {
   final Map<String, bool> _expandedNodes = {};
+  final Map<String, RunningInstance> _runningInstances = {};
   Feature? _dropTargetFeature;
 
   String _getFeaturePath(Feature feature, List<String> parentPath) {
-    final currentPath = [...parentPath, feature.name];
-    return currentPath.join('/');
+    return [...parentPath, feature.name].join('/');
   }
 
   bool _isExpanded(String path) {
@@ -51,8 +51,7 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
     final updatedTransformationsMap =
         Map<String, List<Map<String, dynamic>>>.from(parent.transformationsMap);
 
-    final featurePath = _getFeaturePath(featureToRemove, [parent.name]);
-    updatedTransformationsMap.remove(featurePath);
+    _runningInstances.remove(featureToRemove.name);
 
     final updatedFeature = parent.copyWith(
       composites: updatedComposites,
@@ -76,30 +75,45 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
   }
 
   void _handleFeatureDrop(Feature targetFeature, Feature droppedFeature) {
-    final uniqueDroppedFeature = droppedFeature.copyWith(
-      name: '${droppedFeature.name}_${DateTime.now().millisecondsSinceEpoch}',
+    // Get the original feature's running instance from the registry
+    final registryInstance = widget.dataInterface.getRunningInstanceForFeature(
+      droppedFeature.name, // Original feature name
+      droppedFeature.name, // Use original name as ID for initial lookup
     );
 
-    final updatedComposites = List<Feature>.from(targetFeature.composites)
-      ..add(uniqueDroppedFeature);
-
-    final updatedTransformationsMap =
-        Map<String, List<Map<String, dynamic>>>.from(
-            targetFeature.transformationsMap);
-
-    for (final composite in uniqueDroppedFeature.composites) {
-      final newPath = '${uniqueDroppedFeature.name}/${composite.name}';
-      final originalPath = '${droppedFeature.name}/${composite.name}';
-
-      if (droppedFeature.transformationsMap.containsKey(originalPath)) {
-        updatedTransformationsMap[newPath] = List<Map<String, dynamic>>.from(
-            droppedFeature.transformationsMap[originalPath]!);
-      }
+    if (registryInstance == null) {
+      print(
+          'Warning: No running instance found in registry for ${droppedFeature.name}');
+      return;
     }
+
+    // Use the original instance's ID if it's registered, otherwise create a new one
+    final registryId = registryInstance.id.endsWith('(registered)')
+        ? registryInstance.id // Preserve the original ID with its timestamp
+        : '${droppedFeature.name}_${DateTime.now().millisecondsSinceEpoch}_(registered)';
+
+    final initialInstance = RunningInstance(
+      id: registryId,
+      feature: registryInstance.feature.copyWith(
+        name: registryId,
+        composites: registryInstance.feature.composites,
+        transformationsMap: registryInstance.feature.transformationsMap,
+      ),
+      startPoint: registryInstance.startPoint,
+      howManyValues: registryInstance.howManyValues,
+      transformationStartIndex: registryInstance.transformationStartIndex,
+      transformationEndIndex: registryInstance.transformationEndIndex,
+    );
+
+    setState(() {
+      _runningInstances[registryId] = initialInstance;
+    });
+
+    final updatedComposites = List<Feature>.from(targetFeature.composites)
+      ..add(initialInstance.feature);
 
     final updatedTarget = targetFeature.copyWith(
       composites: updatedComposites,
-      transformationsMap: updatedTransformationsMap,
     );
 
     _updateFeatureInTree(targetFeature, updatedTarget);
@@ -111,24 +125,104 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
       targetFeature.transformationsMap,
     );
 
-    final subfeaturePath = _getFeaturePath(
-        targetFeature.composites.firstWhere((f) => f.name == subfeatureName),
+    // Get the subfeature and its original name
+    final subfeature =
+        targetFeature.composites.firstWhere((f) => f.name == subfeatureName);
+    final originalName = subfeature.name.split('_')[0];
+    final originalPath = _getFeaturePath(
+        Feature(
+          name: originalName,
+          description: subfeature.description,
+          composites: subfeature.composites,
+          transformationsMap: subfeature.transformationsMap,
+          startPoint: subfeature.startPoint,
+          howManyValues: subfeature.howManyValues,
+        ),
         [targetFeature.name]);
 
-    if (!transformationsMap.containsKey(subfeaturePath)) {
-      transformationsMap[subfeaturePath] = [];
+    // Get or create transformations list using the original path
+    if (!transformationsMap.containsKey(originalPath)) {
+      transformationsMap[originalPath] = [];
     }
 
-    transformationsMap[subfeaturePath]!.add({
+    transformationsMap[originalPath]!.add({
       'name': transformation.name,
       'args': transformation.args,
     });
 
-    final updatedFeature = targetFeature.copyWith(
-      transformationsMap: transformationsMap,
-    );
+    // Get the current running instance for this feature
+    final parentPath = _findParentPath(widget.rootFeature, targetFeature) ?? [];
+    final featurePath = _getFeaturePath(targetFeature, parentPath);
+    final currentInstance = _runningInstances[featurePath];
+    if (currentInstance != null) {
+      String newFeatureName;
+      Feature updatedFeature;
+      RunningInstance newInstance;
 
-    _updateFeatureInTree(targetFeature, updatedFeature);
+      // If this is a registered instance, create a new local one with timestamp
+      if (currentInstance.id.endsWith('(registered)')) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final baseName = currentInstance.feature.name.split('_')[0];
+        final localId = '${baseName}_${timestamp}_(local)';
+
+        // Update the feature name to match the new instance ID
+        newFeatureName = localId;
+        updatedFeature = targetFeature.copyWith(
+          name: newFeatureName,
+          transformationsMap: transformationsMap,
+          composites: targetFeature.composites,
+        );
+
+        newInstance = RunningInstance(
+          id: localId,
+          feature: updatedFeature,
+          startPoint: currentInstance.startPoint,
+          howManyValues: currentInstance.howManyValues,
+          transformationStartIndex: currentInstance.transformationStartIndex,
+          transformationEndIndex: currentInstance.transformationEndIndex,
+        );
+
+        // Calculate old and new paths
+        final oldPath = featurePath;
+        final newPath = _getFeaturePath(updatedFeature, parentPath);
+        final wasExpanded = _expandedNodes[oldPath] ?? false;
+
+        setState(() {
+          // Remove the old instance and its expanded state
+          _runningInstances.remove(featurePath);
+          _expandedNodes.remove(featurePath);
+          // Add the new instance with the new path
+          _runningInstances[newPath] = newInstance;
+          // Transfer the expansion state to the new path
+          if (wasExpanded) {
+            _expandedNodes[newPath] = true;
+          }
+        });
+      } else {
+        // For already local instances, just update the values without changing the path
+        newFeatureName = currentInstance.id;
+        updatedFeature = targetFeature.copyWith(
+          name: newFeatureName,
+          transformationsMap: transformationsMap,
+          composites: targetFeature.composites,
+        );
+
+        newInstance = currentInstance.copyWith(
+          feature: updatedFeature,
+        );
+
+        setState(() {
+          _runningInstances[featurePath] = newInstance;
+        });
+      }
+
+      if (widget.onRunningInstanceUpdate != null) {
+        widget.onRunningInstanceUpdate!(newInstance);
+      }
+
+      // Update the feature in the tree with the new name
+      _updateFeatureInTree(targetFeature, updatedFeature);
+    }
   }
 
   void _handleTransformationArgumentChange(Feature parentFeature,
@@ -137,24 +231,106 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
       parentFeature.transformationsMap,
     );
 
-    final subfeaturePath = _getFeaturePath(
-        parentFeature.composites.firstWhere((f) => f.name == subfeatureName),
+    // Get the subfeature and its original name
+    final subfeature =
+        parentFeature.composites.firstWhere((f) => f.name == subfeatureName);
+    final originalName = subfeature.name.split('_')[0];
+    final originalPath = _getFeaturePath(
+        Feature(
+          name: originalName,
+          description: subfeature.description,
+          composites: subfeature.composites,
+          transformationsMap: subfeature.transformationsMap,
+          startPoint: subfeature.startPoint,
+          howManyValues: subfeature.howManyValues,
+        ),
         [parentFeature.name]);
 
-    final transformations = List<Map<String, dynamic>>.from(
-        transformationsMap[subfeaturePath] ?? []);
+    // Get transformations from the original path
+    final transformations =
+        List<Map<String, dynamic>>.from(transformationsMap[originalPath] ?? []);
     if (transformIndex < transformations.length) {
       transformations[transformIndex] = {
         ...transformations[transformIndex],
         'args': [int.tryParse(newValue) ?? 0],
       };
-      transformationsMap[subfeaturePath] = transformations;
+      // Keep using the original path for storing transformations
+      transformationsMap[originalPath] = transformations;
 
-      final updatedFeature = parentFeature.copyWith(
-        transformationsMap: transformationsMap,
-      );
+      // Get the current running instance for this feature
+      final parentPath =
+          _findParentPath(widget.rootFeature, parentFeature) ?? [];
+      final featurePath = _getFeaturePath(parentFeature, parentPath);
+      final currentInstance = _runningInstances[featurePath];
+      if (currentInstance != null) {
+        String newFeatureName;
+        Feature updatedFeature;
+        RunningInstance newInstance;
 
-      _updateFeatureInTree(parentFeature, updatedFeature);
+        // If this is a registered instance, create a new local one with timestamp
+        if (currentInstance.id.endsWith('(registered)')) {
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final baseName = currentInstance.feature.name.split('_')[0];
+          final localId = '${baseName}_${timestamp}_(local)';
+
+          // Update the feature name to match the new instance ID
+          newFeatureName = localId;
+          updatedFeature = parentFeature.copyWith(
+            name: newFeatureName,
+            transformationsMap: transformationsMap,
+            composites: parentFeature.composites,
+          );
+
+          newInstance = RunningInstance(
+            id: localId,
+            feature: updatedFeature,
+            startPoint: currentInstance.startPoint,
+            howManyValues: currentInstance.howManyValues,
+            transformationStartIndex: currentInstance.transformationStartIndex,
+            transformationEndIndex: currentInstance.transformationEndIndex,
+          );
+
+          // Calculate old and new paths
+          final oldPath = featurePath;
+          final newPath = _getFeaturePath(updatedFeature, parentPath);
+          final wasExpanded = _expandedNodes[oldPath] ?? false;
+
+          setState(() {
+            // Remove the old instance and its expanded state
+            _runningInstances.remove(featurePath);
+            _expandedNodes.remove(featurePath);
+            // Add the new instance with the new path
+            _runningInstances[newPath] = newInstance;
+            // Transfer the expansion state to the new path
+            if (wasExpanded) {
+              _expandedNodes[newPath] = true;
+            }
+          });
+        } else {
+          // For already local instances, just update the values without changing the path
+          newFeatureName = currentInstance.id;
+          updatedFeature = parentFeature.copyWith(
+            name: newFeatureName,
+            transformationsMap: transformationsMap,
+            composites: parentFeature.composites,
+          );
+
+          newInstance = currentInstance.copyWith(
+            feature: updatedFeature,
+          );
+
+          setState(() {
+            _runningInstances[featurePath] = newInstance;
+          });
+        }
+
+        if (widget.onRunningInstanceUpdate != null) {
+          widget.onRunningInstanceUpdate!(newInstance);
+        }
+
+        // Update the feature in the tree with the new name
+        _updateFeatureInTree(parentFeature, updatedFeature);
+      }
     }
   }
 
@@ -164,26 +340,119 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
       parentFeature.transformationsMap,
     );
 
-    final subfeaturePath = _getFeaturePath(
-        parentFeature.composites.firstWhere((f) => f.name == subfeatureName),
+    // Get the subfeature and its original name
+    final subfeature =
+        parentFeature.composites.firstWhere((f) => f.name == subfeatureName);
+    final originalName = subfeature.name.split('_')[0];
+    final originalPath = _getFeaturePath(
+        Feature(
+          name: originalName,
+          description: subfeature.description,
+          composites: subfeature.composites,
+          transformationsMap: subfeature.transformationsMap,
+          startPoint: subfeature.startPoint,
+          howManyValues: subfeature.howManyValues,
+        ),
         [parentFeature.name]);
 
-    final transformations = List<Map<String, dynamic>>.from(
-        transformationsMap[subfeaturePath] ?? []);
+    // Get transformations from the original path
+    final transformations =
+        List<Map<String, dynamic>>.from(transformationsMap[originalPath] ?? []);
     if (transformIndex < transformations.length) {
       transformations.removeAt(transformIndex);
-      transformationsMap[subfeaturePath] = transformations;
+      // Keep using the original path for storing transformations
+      transformationsMap[originalPath] = transformations;
 
-      final updatedFeature = parentFeature.copyWith(
-        transformationsMap: transformationsMap,
-      );
+      // Get the current running instance for this feature
+      final parentPath =
+          _findParentPath(widget.rootFeature, parentFeature) ?? [];
+      final featurePath = _getFeaturePath(parentFeature, parentPath);
+      final currentInstance = _runningInstances[featurePath];
+      if (currentInstance != null) {
+        String newFeatureName;
+        Feature updatedFeature;
+        RunningInstance newInstance;
 
-      _updateFeatureInTree(parentFeature, updatedFeature);
+        // If this is a registered instance, create a new local one with timestamp
+        if (currentInstance.id.endsWith('(registered)')) {
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final baseName = currentInstance.feature.name.split('_')[0];
+          final localId = '${baseName}_${timestamp}_(local)';
+
+          // Update the feature name to match the new instance ID
+          newFeatureName = localId;
+          updatedFeature = parentFeature.copyWith(
+            name: newFeatureName,
+            transformationsMap: transformationsMap,
+            composites: parentFeature.composites,
+          );
+
+          newInstance = RunningInstance(
+            id: localId,
+            feature: updatedFeature,
+            startPoint: currentInstance.startPoint,
+            howManyValues: currentInstance.howManyValues,
+            transformationStartIndex: currentInstance.transformationStartIndex,
+            transformationEndIndex: currentInstance.transformationEndIndex,
+          );
+
+          // Calculate old and new paths
+          final oldPath = featurePath;
+          final newPath = _getFeaturePath(updatedFeature, parentPath);
+          final wasExpanded = _expandedNodes[oldPath] ?? false;
+
+          setState(() {
+            // Remove the old instance and its expanded state
+            _runningInstances.remove(featurePath);
+            _expandedNodes.remove(featurePath);
+            // Add the new instance with the new path
+            _runningInstances[newPath] = newInstance;
+            // Transfer the expansion state to the new path
+            if (wasExpanded) {
+              _expandedNodes[newPath] = true;
+            }
+          });
+        } else {
+          // For already local instances, just update the values without changing the path
+          newFeatureName = currentInstance.id;
+          updatedFeature = parentFeature.copyWith(
+            name: newFeatureName,
+            transformationsMap: transformationsMap,
+            composites: parentFeature.composites,
+          );
+
+          newInstance = currentInstance.copyWith(
+            feature: updatedFeature,
+          );
+
+          setState(() {
+            _runningInstances[featurePath] = newInstance;
+          });
+        }
+
+        if (widget.onRunningInstanceUpdate != null) {
+          widget.onRunningInstanceUpdate!(newInstance);
+        }
+
+        // Update the feature in the tree with the new name
+        _updateFeatureInTree(parentFeature, updatedFeature);
+      }
     }
   }
 
   Widget _buildTransformationsList(Feature parentFeature, Feature subfeature) {
-    final subfeaturePath = _getFeaturePath(subfeature, [parentFeature.name]);
+    // Get the original name for the subfeature
+    final originalName = subfeature.name.split('_')[0];
+    final subfeaturePath = _getFeaturePath(
+        Feature(
+          name: originalName,
+          description: subfeature.description,
+          composites: subfeature.composites,
+          transformationsMap: subfeature.transformationsMap,
+          startPoint: subfeature.startPoint,
+          howManyValues: subfeature.howManyValues,
+        ),
+        [parentFeature.name]);
     final transformations =
         parentFeature.transformationsMap[subfeaturePath] ?? [];
 
@@ -215,7 +484,7 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
               Row(
                 children: [
                   Text(
-                    '${subfeature.name}:',
+                    '${originalName}:', // Use original name in display
                     style: const TextStyle(
                         fontSize: 9, fontWeight: FontWeight.bold),
                   ),
@@ -366,41 +635,167 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
   }
 
   void _updateFeatureInTree(Feature oldFeature, Feature newFeature) {
+    // Store the expanded state before the update
+    final expandedState = Map<String, bool>.from(_expandedNodes);
+
     if (oldFeature == widget.rootFeature) {
       widget.onFeatureUpdate(newFeature);
     } else {
-      final parent = _findParentFeature(widget.rootFeature, oldFeature);
-      if (parent != null) {
-        final parentComposites = List<Feature>.from(parent.composites);
-        final targetIndex = parentComposites.indexOf(oldFeature);
-        parentComposites[targetIndex] = newFeature;
+      final updatedRoot =
+          _updateFeatureInSubtree(widget.rootFeature, oldFeature, newFeature);
+      widget.onFeatureUpdate(updatedRoot);
+    }
 
-        final updatedParent = parent.copyWith(composites: parentComposites);
+    // Restore the expanded state after the update
+    setState(() {
+      _expandedNodes.addAll(expandedState);
+    });
+  }
 
-        if (parent == widget.rootFeature) {
-          widget.onFeatureUpdate(updatedParent);
-        } else {
-          final grandParent = _findParentFeature(widget.rootFeature, parent);
-          if (grandParent != null) {
-            final grandParentComposites =
-                List<Feature>.from(grandParent.composites);
-            final parentIndex = grandParentComposites.indexOf(parent);
-            grandParentComposites[parentIndex] = updatedParent;
-            widget.onFeatureUpdate(
-                grandParent.copyWith(composites: grandParentComposites));
-          }
+  Feature _updateFeatureInSubtree(
+      Feature current, Feature target, Feature replacement) {
+    if (current == target) {
+      return replacement;
+    }
+
+    final updatedComposites = current.composites.map((composite) {
+      return _updateFeatureInSubtree(composite, target, replacement);
+    }).toList();
+
+    return current.copyWith(composites: updatedComposites);
+  }
+
+  RunningInstance _getOrCreateRunningInstance(
+      String featurePath, Feature feature) {
+    if (_runningInstances.containsKey(featurePath)) {
+      return _runningInstances[featurePath]!;
+    }
+
+    final instance = RunningInstance(
+      id: featurePath,
+      feature: feature,
+      startPoint: feature.startPoint,
+      howManyValues: feature.howManyValues,
+      transformationStartIndex: 0,
+      transformationEndIndex: feature.howManyValues - 1,
+    );
+
+    setState(() {
+      _runningInstances[featurePath] = instance;
+    });
+    return instance;
+  }
+
+  void _updateRunningInstance(
+      String featurePath, RunningInstance updatedInstance) {
+    // Check if this is a modification of an existing instance
+    final existingInstance = _runningInstances[featurePath];
+    if (existingInstance == null) return;
+
+    // Check if values or transformations have changed
+    final hasChanged =
+        existingInstance.startPoint != updatedInstance.startPoint ||
+            existingInstance.howManyValues != updatedInstance.howManyValues ||
+            existingInstance.transformationStartIndex !=
+                updatedInstance.transformationStartIndex ||
+            existingInstance.transformationEndIndex !=
+                updatedInstance.transformationEndIndex ||
+            !_areTransformationsEqual(
+                existingInstance.feature.transformationsMap,
+                updatedInstance.feature.transformationsMap);
+
+    if (hasChanged) {
+      if (existingInstance.id.endsWith('(registered)')) {
+        // Only create new instance with timestamp when transitioning from registered to local
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final baseName = existingInstance.feature.name.split('_')[0];
+        final localId = '${baseName}_${timestamp}_(local)';
+
+        final newInstance = RunningInstance(
+          id: localId,
+          feature: updatedInstance.feature.copyWith(
+            name: localId,
+            // Keep the same composites to maintain references to unmodified sub-features
+            composites: updatedInstance.feature.composites,
+            // Preserve the updated transformations
+            transformationsMap: updatedInstance.feature.transformationsMap,
+          ),
+          startPoint: updatedInstance.startPoint,
+          howManyValues: updatedInstance.howManyValues,
+          transformationStartIndex: updatedInstance.transformationStartIndex,
+          transformationEndIndex: updatedInstance.transformationEndIndex,
+        );
+
+        setState(() {
+          _runningInstances[featurePath] = newInstance;
+        });
+
+        if (widget.onRunningInstanceUpdate != null) {
+          widget.onRunningInstanceUpdate!(newInstance);
+        }
+      } else {
+        // For already local instances, just update the values without changing the ID
+        final updatedLocalInstance = existingInstance.copyWith(
+          startPoint: updatedInstance.startPoint,
+          howManyValues: updatedInstance.howManyValues,
+          transformationStartIndex: updatedInstance.transformationStartIndex,
+          transformationEndIndex: updatedInstance.transformationEndIndex,
+          feature: existingInstance.feature.copyWith(
+            transformationsMap: updatedInstance.feature.transformationsMap,
+          ),
+        );
+
+        setState(() {
+          _runningInstances[featurePath] = updatedLocalInstance;
+        });
+
+        if (widget.onRunningInstanceUpdate != null) {
+          widget.onRunningInstanceUpdate!(updatedLocalInstance);
         }
       }
     }
   }
 
+  // Helper method to compare transformation maps
+  bool _areTransformationsEqual(
+    Map<String, List<Map<String, dynamic>>> map1,
+    Map<String, List<Map<String, dynamic>>> map2,
+  ) {
+    if (map1.length != map2.length) return false;
+
+    for (final key in map1.keys) {
+      if (!map2.containsKey(key)) return false;
+      final list1 = map1[key]!;
+      final list2 = map2[key]!;
+      if (list1.length != list2.length) return false;
+
+      for (var i = 0; i < list1.length; i++) {
+        if (list1[i]['name'] != list2[i]['name']) return false;
+        if (!_areListsEqual(
+            list1[i]['args'] as List, list2[i]['args'] as List)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  bool _areListsEqual(List list1, List list2) {
+    if (list1.length != list2.length) return false;
+    for (var i = 0; i < list1.length; i++) {
+      if (list1[i] != list2[i]) return false;
+    }
+    return true;
+  }
+
   Widget _buildFeatureNode(Feature feature, List<String> parentPath,
       {bool isRoot = false}) {
     final featurePath = _getFeaturePath(feature, parentPath);
+    final runningInstance = _getOrCreateRunningInstance(featurePath, feature);
     final hasComposites = feature.composites.isNotEmpty;
     final isExpanded = _isExpanded(featurePath);
     final isDropTarget = _dropTargetFeature == feature;
-    final isComposite = !feature.isScalar || isRoot;
+    final isComposite = !runningInstance.feature.isScalar || isRoot;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,27 +821,43 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
                     color: isComposite ? Colors.grey.withOpacity(0.05) : null,
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (hasComposites || isRoot) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: IconButton(
+                            iconSize: 10,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 14,
+                              minHeight: 14,
+                            ),
+                            icon: Icon(
+                              isExpanded
+                                  ? Icons.expand_more
+                                  : Icons.chevron_right,
+                              size: 10,
+                            ),
+                            onPressed: () => _toggleExpanded(featurePath),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: FeatureNode(
-                          instance: RunningInstance(
-                            id: featurePath,
-                            feature: feature,
-                            startPoint: 0,
-                            howManyValues: 10,
-                            transformationStartIndex: 0,
-                            transformationEndIndex: 10,
-                          ),
-                          onUpdate: (updatedInstance) {
-                            _updateFeatureInTree(
-                                feature, updatedInstance.feature);
-                          },
+                          instance: runningInstance,
+                          onUpdate: (updatedInstance) => _updateRunningInstance(
+                              featurePath, updatedInstance),
                           onRemove: isRoot
                               ? null
                               : () {
                                   final parent = _findParentFeature(
                                       widget.rootFeature, feature);
                                   if (parent != null) {
+                                    setState(() {
+                                      _runningInstances.remove(featurePath);
+                                    });
                                     _removeFeature(parent, feature);
                                   }
                                 },
@@ -497,30 +908,56 @@ class FeatureTreeEditorState extends State<FeatureTreeEditor> {
     final instances = <RunningInstance>[];
     final featurePath = _getFeaturePath(feature, parentPath);
 
-    // Get original feature name (remove timestamp)
-    final originalName = feature.name.split('_').first;
-    final originalFeature = widget.dataInterface.getFeature(originalName);
+    // Add this feature's running instance if it exists
+    if (_runningInstances.containsKey(featurePath)) {
+      final instance = _runningInstances[featurePath]!;
 
-    if (originalFeature != null && feature.name != originalName) {
-      // This is a modified copy, create running instance using the modified feature
-      instances.add(
-        RunningInstance(
-          id: feature.name, // Use timestamped name as ID
-          feature: feature, // Use modified feature instead of original
-          startPoint: 0,
-          howManyValues: 10,
-          transformationStartIndex: 0,
-          transformationEndIndex: 10,
-        ),
-      );
+      // If the instance is marked as (registered), try to get the original from registry
+      if (instance.id.endsWith('(registered)')) {
+        final originalName = instance.feature.name.split('_')[0];
+        final registryInstance =
+            widget.dataInterface.getRunningInstanceForFeature(
+          originalName,
+          originalName,
+        );
+        if (registryInstance != null) {
+          // Use the registry instance since it hasn't been modified
+          instances.add(registryInstance);
+        } else {
+          // Fallback to the current instance if registry instance not found
+          instances.add(instance);
+        }
+      } else {
+        // This is a local instance, use it as is
+        instances.add(instance);
+      }
     }
 
-    // Recursively collect from composites
+    // Recursively collect instances for composites
     for (final composite in feature.composites) {
-      instances.addAll(collectRunningInstances(composite, [featurePath]));
+      instances.addAll(
+          collectRunningInstances(composite, [...parentPath, feature.name]));
     }
 
     return instances;
+  }
+
+  // Helper method to find the full path to a feature
+  List<String> _findParentPath(Feature root, Feature target,
+      [List<String> currentPath = const []]) {
+    if (root == target) {
+      return currentPath;
+    }
+
+    for (final composite in root.composites) {
+      final path =
+          _findParentPath(composite, target, [...currentPath, root.name]);
+      if (path.isNotEmpty) {
+        return path;
+      }
+    }
+
+    return [];
   }
 
   @override

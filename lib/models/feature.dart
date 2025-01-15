@@ -4,13 +4,17 @@ class Feature {
   final List<Feature> composites;
   final Map<String, List<Map<String, dynamic>>> transformationsMap;
   final String condition;
+  final int startPoint;
+  final int howManyValues;
 
   const Feature({
     required this.name,
     required this.description,
     required this.composites,
     required this.transformationsMap,
-    this.condition = 'true', // Default condition is always true
+    this.condition = 'true',
+    required this.startPoint,
+    required this.howManyValues,
   });
 
   bool get isScalar => composites.isEmpty;
@@ -32,6 +36,8 @@ class Feature {
     List<Feature>? composites,
     Map<String, List<Map<String, dynamic>>>? transformationsMap,
     String? condition,
+    int? startPoint,
+    int? howManyValues,
   }) {
     // If name is changing, update transformation paths
     if (name != null && name != this.name) {
@@ -51,6 +57,8 @@ class Feature {
         composites: composites ?? this.composites,
         transformationsMap: newTransformationsMap,
         condition: condition ?? this.condition,
+        startPoint: startPoint ?? this.startPoint,
+        howManyValues: howManyValues ?? this.howManyValues,
       );
     }
 
@@ -60,6 +68,8 @@ class Feature {
       composites: composites ?? this.composites,
       transformationsMap: transformationsMap ?? this.transformationsMap,
       condition: condition ?? this.condition,
+      startPoint: startPoint ?? this.startPoint,
+      howManyValues: howManyValues ?? this.howManyValues,
     );
   }
 

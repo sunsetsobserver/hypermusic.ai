@@ -13,6 +13,8 @@ abstract class DataInterface {
   void updateRunningInstance(
       RunningInstance oldInstance, RunningInstance newInstance);
   Feature? getFeature(String name);
+  RunningInstance? getRunningInstanceForFeature(
+      String featureName, String subFeatureName);
 
   Future<List<String>> getAllFeatures();
   Future<List<String>> getAllConditions();
