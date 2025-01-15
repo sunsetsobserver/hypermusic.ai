@@ -3,12 +3,15 @@
 import 'package:flutter/material.dart';
 import '../../models/running_instance.dart';
 
+typedef OnUpdateCallback = void Function(RunningInstance instance,
+    {int? startPoint, int? howManyValues});
+
 class FeatureNode extends StatelessWidget {
   final RunningInstance instance;
-  final Function(RunningInstance) onUpdate;
+  final OnUpdateCallback onUpdate;
   final VoidCallback? onRemove;
   final bool isExpanded;
-  final VoidCallback onToggleExpand;
+  final VoidCallback? onToggleExpand;
 
   const FeatureNode({
     super.key,
@@ -16,20 +19,8 @@ class FeatureNode extends StatelessWidget {
     required this.onUpdate,
     this.onRemove,
     required this.isExpanded,
-    required this.onToggleExpand,
+    this.onToggleExpand,
   });
-
-  void _updateStartPoint(int newStartPoint) {
-    onUpdate(
-      instance.copyWith(startPoint: newStartPoint),
-    );
-  }
-
-  void _updateHowManyValues(int newHowManyValues) {
-    onUpdate(
-      instance.copyWith(howManyValues: newHowManyValues),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +79,7 @@ class FeatureNode extends StatelessWidget {
                           ),
                           onChanged: (value) {
                             final startPoint = int.tryParse(value) ?? 0;
-                            _updateStartPoint(startPoint);
+                            onUpdate(instance, startPoint: startPoint);
                           },
                         ),
                       ),
@@ -109,7 +100,7 @@ class FeatureNode extends StatelessWidget {
                           ),
                           onChanged: (value) {
                             final howMany = int.tryParse(value) ?? 1;
-                            _updateHowManyValues(howMany);
+                            onUpdate(instance, howManyValues: howMany);
                           },
                         ),
                       ),
