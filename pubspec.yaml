@@ -1,4 +1,4 @@
-name: flutter_application_1
+name: hypermusic
 description: A new Flutter project.
 
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -18,6 +18,9 @@ dependencies:
   universal_html: ^2.2.4
   http: ^1.2.2
   flutter_web3: ^2.1.9
+  tuple: ^2.0.2
+  crypto: ^3.0.6
+  convert: ^3.1.2
 
 dev_dependencies:
   flutter_test:
